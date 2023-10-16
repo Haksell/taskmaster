@@ -11,7 +11,7 @@ Vagrant.configure("2") do |config|
 
   config.vm.provision "shell", inline: <<~SHELL
     apt-get update
-    apt-get install -y git vim curl
+    apt-get install -y git vim curl build-essential
     su vagrant <<EOF
     curl https://sh.rustup.rs -sSf | sh -s -- -y;
     EOF
