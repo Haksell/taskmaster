@@ -4,6 +4,21 @@
 - [Config](#id-section1)
 - [Client Commands](#id-section2)
 
+## Run
+
+! for the moment it's server will only echo client messages from stdin
+
+#### Run server
+```bash
+rm -rf .unixdomain.sock && cargo run --bin server
+```
+! **rm -rf .unixdomain.sock** is here to remove created unix domain socket (will be handled after implementing signals)
+
+#### Run client
+```bash
+cargo run --bin client
+```
+
 <div id='id-section1'/>
 
 ## Config
