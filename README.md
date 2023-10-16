@@ -1,5 +1,14 @@
+# Rustmaster
 
-### Config File
+# My Table of content
+- [Section 1](#id-section1)
+- [Section 2](#id-section2)
+
+<div id='id-section1'/>
+## Section 1
+
+
+### Config 
 - **cmd**: 
   - Type: string
   - Description: The command to use to launch the program
@@ -56,3 +65,15 @@
 - **env**: 
   - Type: Map of key-value pairs (String, String)
   - Description: Environment variables to set before launching the program
+
+### Client Commands {#client_commands} <a name="Config"></a>
+<div id='id-section2'/>
+## Section 2
+- **status**:
+  - Description: Returns a list of programs with their statuses (start/stop/restart) and program names.
+
+- **reload**:
+  - Description: Reloads the configuration while tracking changes.
+
+- **stop all**:
+  - Description: Stops all programs.
