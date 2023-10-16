@@ -1,8 +1,11 @@
 # Rustmaster
 
 # My Table of content
+- [Run](#id-section0)
 - [Config](#id-section1)
 - [Client Commands](#id-section2)
+
+<div id='id-section0'/>
 
 ## Run
 
