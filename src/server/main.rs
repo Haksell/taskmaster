@@ -1,8 +1,11 @@
 use std::os::unix::net::UnixListener;
 use std::io::Read;
-use rustmaster_core::UNIX_DOMAIN_SOCKET_PATH;
+use rustmaster_core::{Task, UNIX_DOMAIN_SOCKET_PATH};
 
 fn main() {
+    //let tasks = Task::from_yml(String::from("config_files/main.yml")).unwrap();
+    //println!("{:?}", tasks);
+    
     let listener = match UnixListener::bind(UNIX_DOMAIN_SOCKET_PATH) {
         Ok(stream) => stream,
         Err(_) => {

@@ -1,0 +1,18 @@
+task1:
+  cmd: 
+  umask: 777
+  working_dir: /tmp
+  autostart: true
+  auto_restart: unexpected
+  exit_codes:
+    - 0
+    - 2
+  start_retries: 3
+  start_time: 5
+  stop_signal: TERM
+  stop_time: 10
+  stdout: /tmp/task1.stdout
+  stderr: /tmp/task1.stderr
+  env:
+    STARTED_BY: taskmaster
+    ANSWER: 42

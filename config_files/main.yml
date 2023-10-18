@@ -1,0 +1,35 @@
+task1:
+  cmd: "while true; do echo 'Task 1 output'; sleep 3; done"
+  umask: 777
+  working_dir: /tmp
+  autostart: true
+  auto_restart: unexpected
+  exit_codes:
+    - 0
+    - 2
+  start_retries: 3
+  start_time: 5
+  stop_signal: TERM
+  stop_time: 10
+  stdout: /tmp/task1.stdout
+  stderr: /tmp/task1.stderr
+  env:
+    STARTED_BY: taskmaster
+    ANSWER: 42
+    
+task2:
+  cmd: "while true; do echo 'Task 2 output'; sleep 3; done"
+  num_procs: 3
+  umask: 777
+  working_dir: /tmp
+  autostart: true
+  auto_restart: unexpected
+  exit_codes:
+    - 0
+    - 2
+  start_retries: 3
+  start_time: 5
+  stop_signal: USR1
+  stop_time: 10
+  stdout: /tmp/task2.stdout
+  stderr: /tmp/task2.stderr
