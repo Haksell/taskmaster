@@ -12,12 +12,12 @@ Vagrant.configure("2") do |config|
   config.vm.provision "shell", inline: <<~SHELL
     apt-get update
     apt-get install -y git vim curl build-essential zsh
+    
+    su -l vagrant -s "/bin/sh" -c "curl https://sh.rustup.rs -sSf | sh -s -- -y"
 
-    su vagrant <<EOF
-    curl https://sh.rustup.rs -sSf | sh -s -- -y;
-    EOF
-
-    su -l vagrant -s "/bin/sh" -c "curl -fsSO https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh; chmod 755 install.sh; ./install.sh --unattended"; chsh -s /bin/zsh vagrant
+    su -l vagrant -s "/bin/sh" -c "curl -fsSO https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh; chmod 755 install.sh; ./install.sh --unattended"
+    
+    chsh -s /bin/zsh vagrant
 
     echo "cd /vagrant" >> /home/vagrant/.zshrc
   SHELL
