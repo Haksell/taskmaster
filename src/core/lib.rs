@@ -128,6 +128,8 @@ mod tests {
     const MASK_NOT_VALID_2: &str = "config_files/test/umask_not_valid_2.yml";
     const MASK_NOT_VALID_3: &str = "config_files/test/umask_not_valid_3.yml";
     const WORKING_DIR_WITH_SPACES: &str = "config_files/test/working_dir_with_spaces.yml";
+    const STDOUT_WITH_SPACES: &str = "config_files/test/stdout_path_with_spaces.yml";
+    const STDERR_WITH_SPACES: &str = "config_files/test/stderr_path_with_spaces.yml";
 
     #[test]
     fn cmd_empty_should_return_error() {
@@ -259,6 +261,40 @@ mod tests {
 
         // when
         let task = Task::from_yml(WORKING_DIR_WITH_SPACES.into()).unwrap();
+
+        //then
+        assert_eq!(expected, task);
+    }
+
+    #[test]
+    fn stdout_path_with_spaces_should_be_trimmed() {
+        //given
+        let mut expected_task = Task::default();
+        expected_task.cmd = String::from("cmd");
+        expected_task.stdout = Some(String::from("/tmp/task1.stdout"));
+        let expected_key = String::from("task1");
+        let mut expected: BTreeMap<String, Task> = BTreeMap::new();
+        expected.insert(expected_key, expected_task);
+
+        // when
+        let task = Task::from_yml(STDOUT_WITH_SPACES.into()).unwrap();
+
+        //then
+        assert_eq!(expected, task);
+    }
+
+    #[test]
+    fn stderr_path_with_spaces_should_be_trimmed() {
+        //given
+        let mut expected_task = Task::default();
+        expected_task.cmd = String::from("cmd");
+        expected_task.stderr = Some(String::from("/tmp/task1.stderr"));
+        let expected_key = String::from("task1");
+        let mut expected: BTreeMap<String, Task> = BTreeMap::new();
+        expected.insert(expected_key, expected_task);
+
+        // when
+        let task = Task::from_yml(STDERR_WITH_SPACES.into()).unwrap();
 
         //then
         assert_eq!(expected, task);
