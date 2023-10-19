@@ -12,6 +12,9 @@ use crate::data::StopSignal::TERM;
 
 pub const UNIX_DOMAIN_SOCKET_PATH: &str = ".unixdomain.sock";
 
+//TODO: Validation of stdout/stderr files path
+//TODO: Check existing of working dir
+
 #[derive(Debug, PartialEq, Validate, Deserialize)]
 #[serde(default)]
 pub struct Task {
