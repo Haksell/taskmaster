@@ -11,6 +11,11 @@
 
 ! for the moment it's server will only echo client messages from stdin
 
+#### Launch Virtual Machine
+```bash
+vagrant up && vagrant ssh
+```
+
 #### Run server
 ```bash
 rm -rf .unixdomain.sock && cargo run --bin server
