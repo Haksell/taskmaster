@@ -22,5 +22,5 @@ clean:
 	$(call rm,target)
 
 fclean: clean
-	vagrant destroy
+	vagrant destroy -f
 	$(call rm,.vagrant)
