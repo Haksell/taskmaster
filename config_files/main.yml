@@ -1,6 +1,6 @@
 task1:
   cmd: "while true; do echo 'Task 1 output'; sleep 3; done"
-  umask: 777
+  umask: 022
   working_dir: /tmp
   autostart: true
   auto_restart: unexpected

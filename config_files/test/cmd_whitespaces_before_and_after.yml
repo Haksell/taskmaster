@@ -13,6 +13,3 @@ task1:
   stop_time: 10
   stdout: /tmp/task1.stdout
   stderr: /tmp/task1.stderr
-  env:
-    STARTED_BY: taskmaster
-    ANSWER: 42
