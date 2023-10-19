@@ -1,16 +1,16 @@
 mod data;
 
+use crate::data::StopSignal::TERM;
+use crate::data::{AutoRestart, StopSignal};
+use regex::Regex;
+use serde::{Deserialize, Deserializer};
 use std::collections::BTreeMap;
 use std::error::Error;
 use std::fs::File;
 use std::io::Read;
-use serde::{Deserialize, Deserializer};
 use validator::Validate;
-use regex::Regex;
-use crate::data::{AutoRestart, StopSignal};
-use crate::data::StopSignal::TERM;
 
-pub const UNIX_DOMAIN_SOCKET_PATH: &str = ".unixdomain.sock";
+pub const UNIX_DOMAIN_SOCKET_PATH: &str = "/tmp/.unixdomain.sock";
 
 //TODO: Validation of stdout/stderr files path
 //TODO: Check existing of working dir
@@ -42,12 +42,11 @@ pub struct Task {
 }
 
 fn deserialize_umask<'de, D>(deserializer: D) -> Result<u32, D::Error>
-    where
-        D: Deserializer<'de>
+where
+    D: Deserializer<'de>,
 {
     let value = String::deserialize(deserializer)?;
     let regex = Regex::new(r"\b(?:0o)?[0-7]{3}\b").unwrap();
-
 
     if !regex.is_match(value.as_str()) {
         return Err(serde::de::Error::custom(format!(
@@ -60,20 +59,20 @@ fn deserialize_umask<'de, D>(deserializer: D) -> Result<u32, D::Error>
         Err(_) => Err(serde::de::Error::custom(format!(
             "\"{}\" is not a valid umask in octal format, e.g., 022, 777",
             value
-        )))
+        ))),
     }
 }
 
 fn deserialize_string_and_trim<'de, D>(deserializer: D) -> Result<String, D::Error>
-    where
-        D: Deserializer<'de>
+where
+    D: Deserializer<'de>,
 {
     String::deserialize(deserializer).map(|s| s.trim().to_string())
 }
 
 fn deserialize_option_string_and_trim<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
-    where
-        D: Deserializer<'de>
+where
+    D: Deserializer<'de>,
 {
     String::deserialize(deserializer).map(|s| Some(s.trim().to_string()))
 }
@@ -117,15 +116,16 @@ impl Task {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
     use crate::data::AutoRestart::Unexpected;
     use crate::data::StopSignal::TERM;
     use crate::Task;
+    use std::collections::BTreeMap;
 
     const CMD_EMPTY: &str = "config_files/test/cmd_empty.yml";
     const CMD_NOT_PROVIDED: &str = "config_files/test/cmd_not_provided.yml";
     const CMD_ONLY_WHITE_SPACES: &str = "config_files/test/cmd_white_spaces.yml";
-    const CMD_WHITE_SPACES_BEFORE_AND_AFTER: &str = "config_files/test/cmd_whitespaces_before_and_after.yml";
+    const CMD_WHITE_SPACES_BEFORE_AND_AFTER: &str =
+        "config_files/test/cmd_whitespaces_before_and_after.yml";
     const CONFIG_ONLY_CMD_PRESENT: &str = "config_files/test/config_only_cmd.yml";
     const MASK_NOT_VALID_1: &str = "config_files/test/umask_not_valid_1.yml";
     const MASK_NOT_VALID_2: &str = "config_files/test/umask_not_valid_2.yml";
@@ -172,7 +172,7 @@ mod tests {
 
     #[test]
     fn cmd_white_spaces_before_and_after_should_return_trimmed_cmd() {
-        //given 
+        //given
         let expected_key = String::from("task1");
         let expected_value = Task {
             cmd: String::from("while true; do echo 'Task 1 output'; sleep 3; done"),
@@ -224,7 +224,9 @@ mod tests {
         //then
         assert!(task.is_err());
         if let Err(error) = task {
-            assert!(error.to_string().contains("Umask should be umask in octal representation"));
+            assert!(error
+                .to_string()
+                .contains("Umask should be umask in octal representation"));
         }
     }
 
@@ -236,7 +238,9 @@ mod tests {
         //then
         assert!(task.is_err());
         if let Err(error) = task {
-            assert!(error.to_string().contains("Umask should be umask in octal representation"));
+            assert!(error
+                .to_string()
+                .contains("Umask should be umask in octal representation"));
         }
     }
 
@@ -248,7 +252,9 @@ mod tests {
         //then
         assert!(task.is_err());
         if let Err(error) = task {
-            assert!(error.to_string().contains("Umask should be umask in octal representation"));
+            assert!(error
+                .to_string()
+                .contains("Umask should be umask in octal representation"));
         }
     }
 

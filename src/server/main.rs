@@ -1,6 +1,6 @@
-use std::os::unix::net::UnixListener;
-use std::io::Read;
 use rustmaster_core::UNIX_DOMAIN_SOCKET_PATH;
+use std::io::Read;
+use std::os::unix::net::UnixListener;
 
 fn main() {
     let listener = match UnixListener::bind(UNIX_DOMAIN_SOCKET_PATH) {
