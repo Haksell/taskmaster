@@ -10,6 +10,12 @@ define rm
 fi
 endef
 
+revagrant: fclean vagrant
+
+vagrant:
+	vagrant up --provision
+	vagrant ssh
+
 server:
 	$(call rm,$(SOCKET))
 	cargo run --bin server
