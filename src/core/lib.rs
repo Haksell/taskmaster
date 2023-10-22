@@ -2,28 +2,31 @@ mod data;
 
 use crate::data::StopSignal::TERM;
 use crate::data::{AutoRestart, StopSignal};
-use regex::Regex;
 use serde::{Deserialize, Deserializer};
 use std::collections::BTreeMap;
 use std::error::Error;
-use std::fs::File;
+use std::fs::{File, Permissions};
 use std::io::Read;
-use validator::Validate;
+use serde_valid::Validate;
+use std::os::unix::fs::PermissionsExt;
+
 
 pub const UNIX_DOMAIN_SOCKET_PATH: &str = "/tmp/.unixdomain.sock";
 
 //TODO: Validation of stdout/stderr files path
 //TODO: Check existing of working dir
 
+
 #[derive(Debug, PartialEq, Validate, Deserialize)]
 #[serde(default)]
 pub struct Task {
     #[serde(deserialize_with = "deserialize_string_and_trim")]
-    #[validate(length(min = 1, message = "can't be empty"))]
+    #[validate(min_length = 1)]
     cmd: String,
-    #[validate(range(min = 1))]
+    #[validate(minimum = 1)]
     num_procs: u32,
     #[serde(deserialize_with = "deserialize_umask")]
+    #[validate(custom(validate_umask))]
     umask: u32,
     #[serde(deserialize_with = "deserialize_option_string_and_trim")]
     working_dir: Option<String>,
@@ -41,23 +44,22 @@ pub struct Task {
     env: BTreeMap<String, String>,
 }
 
+fn validate_umask(value: &u32) -> Result<(), serde_valid::validation::Error> {
+    if !(*value & 0o777 == *value) {
+        return Err(serde_valid::validation::Error::Custom("Invalid umask".to_string()));
+    }
+    Ok(())
+}
+
 fn deserialize_umask<'de, D>(deserializer: D) -> Result<u32, D::Error>
 where
     D: Deserializer<'de>,
 {
     let value = String::deserialize(deserializer)?;
-    let regex = Regex::new(r"\b(?:0o)?[0-7]{3}\b").unwrap();
-
-    if !regex.is_match(value.as_str()) {
-        return Err(serde::de::Error::custom(format!(
-            "\"{}\", Umask should be umask in octal representation",
-            value
-        )));
-    }
     match u32::from_str_radix(value.as_str(), 8) {
         Ok(umask) => Ok(umask),
         Err(_) => Err(serde::de::Error::custom(format!(
-            "\"{}\" is not a valid umask in octal format, e.g., 022, 777",
+            "\"{}\" is not a valid umask.",
             value
         ))),
     }
@@ -154,6 +156,7 @@ mod tests {
         //then
         assert!(task.is_err());
         if let Err(error) = task {
+            println!("{}", error.to_string());
             assert!(error.to_string().contains("cmd: can't be empty"));
         }
     }

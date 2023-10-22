@@ -1,8 +1,10 @@
-use rustmaster_core::UNIX_DOMAIN_SOCKET_PATH;
+use rustmaster_core::{Task, UNIX_DOMAIN_SOCKET_PATH};
 use std::io::Read;
 use std::os::unix::net::UnixListener;
 
 fn main() {
+    let a = Task::from_yml(String::from("config_files/main.yml"));
+    println!("{:?}", a);
     let listener = match UnixListener::bind(UNIX_DOMAIN_SOCKET_PATH) {
         Ok(stream) => stream,
         Err(_) => {
