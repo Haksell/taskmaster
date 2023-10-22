@@ -1,5 +1,7 @@
 SOCKET := /tmp/.unixdomain.sock
 
+GARBAGE := *VBox*.log
+
 RESET := \033[0m
 RED := \033[1m\033[31m
 
@@ -25,6 +27,7 @@ client:
 
 clean:
 	$(call rm,$(SOCKET))
+	$(call rm,$(GARBAGE))
 	$(call rm,target)
 
 fclean: clean
