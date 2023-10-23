@@ -3,13 +3,10 @@ use std::io::Read;
 use std::os::unix::net::UnixListener;
 
 fn main() {
-    let listener = match UnixListener::bind(UNIX_DOMAIN_SOCKET_PATH) {
-        Ok(stream) => stream,
-        Err(_) => {
-            eprintln!("Can't listen \"{}\"", UNIX_DOMAIN_SOCKET_PATH);
-            return;
-        }
-    };
+    let listener = UnixListener::bind(UNIX_DOMAIN_SOCKET_PATH).unwrap_or_else(|_| {
+        eprintln!("Can't listen \"{}\"", UNIX_DOMAIN_SOCKET_PATH);
+        std::process::exit(1);
+    });
     for stream in listener.incoming() {
         match stream {
             Ok(mut stream) => {
