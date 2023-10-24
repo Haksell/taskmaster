@@ -28,6 +28,12 @@ fn answer(tasks: &BTreeMap<String, Task>, action: Action) -> String {
             };
         }
         Action::Help => action.get_description(),
+        Action::Config(task_name) => {
+            return match tasks.get(task_name.as_str()) {
+                None => format!("Can't find \"{}\" task", task_name),
+                Some(task) => format!("{}: {}", task_name, task.get_json_configuration())
+            }
+        },
         Action::Exit => String::new()
     };
 }

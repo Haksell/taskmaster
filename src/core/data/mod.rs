@@ -2,11 +2,11 @@ use std::collections::BTreeMap;
 use std::fmt::{Display, Formatter};
 use std::fs::File;
 use std::io::Read;
-use serde::{Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, Serialize};
 use crate::data::StopSignal::TERM;
 use validator::{Validate, ValidationError};
 
-#[derive(Debug, PartialEq, Deserialize, Clone)]
+#[derive(Debug, PartialEq, Deserialize, Serialize, Clone)]
 pub enum AutoRestart {
     #[serde(rename = "true")]
     True,
@@ -16,7 +16,7 @@ pub enum AutoRestart {
     Unexpected,
 }
 
-#[derive(Debug, PartialEq, Deserialize, Clone)]
+#[derive(Debug, PartialEq, Deserialize, Serialize, Clone)]
 pub enum StopSignal {
     TERM,
     HUP,
@@ -56,7 +56,7 @@ impl Display for State {
     }
 }
 
-#[derive(Debug, PartialEq, Deserialize, Clone, Validate)]
+#[derive(Debug, PartialEq, Deserialize, Serialize, Clone, Validate)]
 #[serde(default)]
 pub struct Configuration {
     #[serde(deserialize_with = "deserialize_string_and_trim")]

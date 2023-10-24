@@ -55,6 +55,10 @@ impl Task {
     pub fn get_state(&self) -> &State {
         &self.state
     }
+    
+    pub fn get_json_configuration(&self) -> String {
+        serde_json::to_string_pretty(&self.configuration).expect("Serialization failed")
+    }
 }
 
 impl Display for Task {

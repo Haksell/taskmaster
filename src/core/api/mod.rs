@@ -2,18 +2,22 @@ use std::fmt;
 use std::fmt::Formatter;
 use std::slice::Iter;
 use serde::{Deserialize, Serialize};
-use crate::api::Action::{Exit, Help, Status};
+use crate::api::Action::{Config, Exit, Help, Status};
 
 pub const API_KEYWORD_HELP: &'static str = "help";
 pub const API_KEYWORD_STATUS: &'static str = "status";
 pub const API_KEYWORD_EXIT: &'static str = "exit";
+pub const API_KEYWORD_CONFIG: &'static str = "config";
 pub const API_STATUS_DESCR: &'static str = "status without args returns the status of all tasks\n\
                                              \tstatus <task_name> returns the status of a specific task";
 pub const API_EXIT_DESCR: &'static str = "exit from the CLI";
+pub const API_CONFIG_DESCR: &'static str = "config <task_name> returns configuration details";
+
 
 //TODO: add unit tests
 #[derive(Eq, PartialEq, Serialize, Deserialize, Clone)]
 pub enum Action {
+    Config(String),
     Status(Option<String>),
     Help,
     Exit
@@ -47,6 +51,13 @@ impl Action {
                     Ok(Status(None))
                 }
             }
+            Config(_) => {
+                if split.len() != 1 {
+                    Err(format!("{}: should have 1 argument (task name)", result.to_string()))
+                } else {
+                    Ok(Config(split[0].to_string()))
+                } 
+            }
             Help => {
                 if split.len() > 0 {
                     return Err(format!("Unknown arguments for {} action: {:?}", result.to_string(), split))
@@ -61,7 +72,7 @@ impl Action {
 
 
     pub fn iterator() -> Iter<'static, Action> {
-        static ACTIONS: [Action; 3] = [Status(None), Help, Exit];
+        static ACTIONS: [Action; 4] = [Status(None), Help, Exit, Config(String::new())];
         ACTIONS.iter()
     }
     
@@ -69,6 +80,7 @@ impl Action {
         match self {
             Status(_) => String::from(API_STATUS_DESCR),
             Exit => String::from(API_EXIT_DESCR),
+            Config(_) => String::from(API_CONFIG_DESCR),
             Help => {
                 let mut result = String::new();
                 for (i, action) in Action::iterator().enumerate() {
@@ -91,6 +103,7 @@ impl fmt::Display for Action {
             Status(_) => API_KEYWORD_STATUS,
             Help => API_KEYWORD_HELP,
             Exit => API_KEYWORD_EXIT,
+            Config(_) => API_KEYWORD_CONFIG,
         };
         write!(f, "{}", keyword)
     }

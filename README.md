@@ -1,36 +1,101 @@
 # Rustmaster
 
-# My Table of content
+# Menu
 - [Run](#id-section0)
-- [Config](#id-section1)
 - [Client Commands](#id-section2)
+- [Config file](#id-section1)
 
 <div id='id-section0'/>
 
 ## Run
 
-! for the moment it's server will only echo client messages from stdin
-
-#### Launch Virtual Machine
+-------------
+### Launch Virtual Machine
+#### manually
 ```bash
 vagrant up && vagrant ssh
 ```
 
-#### Run server
+#### using Makefile
+```bash
+make vagrant
+```
+
+-------------
+### Run server
+#### manually
 ```bash
 rm -rf .unixdomain.sock && cargo run --bin server
 ```
 ! **rm -rf .unixdomain.sock** is here to remove created unix domain socket (will be handled after implementing signals)
 
-#### Run client
+#### using Makefile
+```bash
+make server
+```
+
+-------------
+
+### Run client
+#### manually
+
 ```bash
 cargo run --bin client
 ```
+
+#### using Makefile
+```bash
+make client
+```
+
+-------------
 
 #### Run tests
 ```bash
 cargo test
 ```
+
+-------------
+
+### Clean
+```bash
+make clean
+```
+```bash
+make fclean
+```
+
+-------------
+
+<div id='id-section2'/>
+
+## Client Actions
+### Implemented
+
+- **status**:
+  - Description: Returns a list of programs with their statuses.
+
+- **status <task_name>**
+  - Description: Returns a task with their status.
+
+- **config <task_name>**
+  - Description: Returns a task configuration in json. Not in supervisor.
+
+- **help**
+  - Description: Returns a list of available actions with description
+
+- **exit**
+  - Description: Closes CLI
+
+### Not implemented
+
+- **reload**:
+  - Description: Reloads the configuration while tracking changes.
+
+- **stop all**:
+  - Description: Stops all programs.
+
+- **other commands**
 
 <div id='id-section1'/>
 
@@ -108,16 +173,3 @@ cargo test
   - Type: Map of key-value pairs (String, String)
   - Default value: Empty
   - Description: Environment variables to set before launching the program
-
-
-<div id='id-section2'/>
-
-## Client Commands
-- **status**:
-  - Description: Returns a list of programs with their statuses (start/stop/restart) and program names.
-
-- **reload**:
-  - Description: Reloads the configuration while tracking changes.
-
-- **stop all**:
-  - Description: Stops all programs.
