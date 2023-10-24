@@ -1,0 +1,97 @@
+use std::fmt;
+use std::fmt::Formatter;
+use std::slice::Iter;
+use serde::{Deserialize, Serialize};
+use crate::api::Action::{Exit, Help, Status};
+
+pub const API_KEYWORD_HELP: &'static str = "help";
+pub const API_KEYWORD_STATUS: &'static str = "status";
+pub const API_KEYWORD_EXIT: &'static str = "exit";
+pub const API_STATUS_DESCR: &'static str = "status without args returns the status of all tasks\n\
+                                             \tstatus <task_name> returns the status of a specific task";
+pub const API_EXIT_DESCR: &'static str = "exit from the CLI";
+
+//TODO: add unit tests
+#[derive(Eq, PartialEq, Serialize, Deserialize, Clone)]
+pub enum Action {
+    Status(Option<String>),
+    Help,
+    Exit
+}
+
+impl Action {
+    pub fn from(action: &str) -> Result<Action, String> {
+        let mut split: Vec<&str> = action.split_whitespace().collect();
+        if split.is_empty() {
+            return Err(String::new());
+        }
+
+        let enum_value = Action::iterator()
+            .filter(|enum_value| enum_value.to_string() == split[0])
+            .next();
+
+        if enum_value.is_none() {
+            return Err(format!("Unknown action: {}", split[0]));
+        }
+
+        let result = enum_value.unwrap();
+        split.remove(0);
+
+        match result {
+            Status(_) => {
+                if split.len() > 1 {
+                    Err(format!("{}: doesn't take more then 1 argument (task name)", result.to_string()))
+                } else if split.len() == 1 {
+                    Ok(Status(Some(split[0].to_string())))
+                } else {
+                    Ok(Status(None))
+                }
+            }
+            Help => {
+                if split.len() > 0 {
+                    return Err(format!("Unknown arguments for {} action: {:?}", result.to_string(), split))
+                }
+                Ok(Help)
+            }
+            Exit => {
+                Ok(Exit)
+            }
+        }
+    }
+
+
+    pub fn iterator() -> Iter<'static, Action> {
+        static ACTIONS: [Action; 3] = [Status(None), Help, Exit];
+        ACTIONS.iter()
+    }
+    
+    pub fn get_description(&self) -> String {
+        match self {
+            Status(_) => String::from(API_STATUS_DESCR),
+            Exit => String::from(API_EXIT_DESCR),
+            Help => {
+                let mut result = String::new();
+                for (i, action) in Action::iterator().enumerate() {
+                    if *action != Help {
+                        result.push_str(format!("{}: {}", action, action.get_description()).as_str());
+                        if i != Action::iterator().len() - 1 {
+                            result.push_str("\n")
+                        }
+                    }
+                }
+                result
+            }
+        }
+    }
+}
+
+impl fmt::Display for Action {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let keyword = match self {
+            Status(_) => API_KEYWORD_STATUS,
+            Help => API_KEYWORD_HELP,
+            Exit => API_KEYWORD_EXIT,
+        };
+        write!(f, "{}", keyword)
+    }
+}

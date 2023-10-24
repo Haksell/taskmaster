@@ -17,6 +17,7 @@ path = "src/core/lib.rs"
 
 [dependencies]
 serde_yaml = "0.9.25"
-validator = { version = "0.16.1", features = ["derive"] }
 serde = { version = "1.0.189", features = ["derive"] }
+validator = { version = "0.16", features = ["derive"] }
 regex = "1.10.2"
+serde_json = "1.0.107"
