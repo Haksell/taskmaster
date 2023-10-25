@@ -1,8 +1,8 @@
+use crate::api::Action::{Config, Exit, Help, Status};
+use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fmt::Formatter;
 use std::slice::Iter;
-use serde::{Deserialize, Serialize};
-use crate::api::Action::{Config, Exit, Help, Status};
 
 pub const API_KEYWORD_HELP: &'static str = "help";
 pub const API_KEYWORD_STATUS: &'static str = "status";
@@ -13,14 +13,13 @@ pub const API_STATUS_DESCR: &'static str = "status without args returns the stat
 pub const API_EXIT_DESCR: &'static str = "exit from the CLI";
 pub const API_CONFIG_DESCR: &'static str = "config <task_name> returns configuration details";
 
-
 //TODO: add unit tests
 #[derive(Eq, PartialEq, Serialize, Deserialize, Clone)]
 pub enum Action {
     Config(String),
     Status(Option<String>),
     Help,
-    Exit
+    Exit,
 }
 
 impl Action {
@@ -44,7 +43,10 @@ impl Action {
         match result {
             Status(_) => {
                 if split.len() > 1 {
-                    Err(format!("{}: doesn't take more then 1 argument (task name)", result.to_string()))
+                    Err(format!(
+                        "{}: doesn't take more then 1 argument (task name)",
+                        result.to_string()
+                    ))
                 } else if split.len() == 1 {
                     Ok(Status(Some(split[0].to_string())))
                 } else {
@@ -53,29 +55,33 @@ impl Action {
             }
             Config(_) => {
                 if split.len() != 1 {
-                    Err(format!("{}: should have 1 argument (task name)", result.to_string()))
+                    Err(format!(
+                        "{}: should have 1 argument (task name)",
+                        result.to_string()
+                    ))
                 } else {
                     Ok(Config(split[0].to_string()))
-                } 
+                }
             }
             Help => {
                 if split.len() > 0 {
-                    return Err(format!("Unknown arguments for {} action: {:?}", result.to_string(), split))
+                    return Err(format!(
+                        "Unknown arguments for {} action: {:?}",
+                        result.to_string(),
+                        split
+                    ));
                 }
                 Ok(Help)
             }
-            Exit => {
-                Ok(Exit)
-            }
+            Exit => Ok(Exit),
         }
     }
-
 
     pub fn iterator() -> Iter<'static, Action> {
         static ACTIONS: [Action; 4] = [Status(None), Help, Exit, Config(String::new())];
         ACTIONS.iter()
     }
-    
+
     pub fn get_description(&self) -> String {
         match self {
             Status(_) => String::from(API_STATUS_DESCR),
@@ -85,7 +91,8 @@ impl Action {
                 let mut result = String::new();
                 for (i, action) in Action::iterator().enumerate() {
                     if *action != Help {
-                        result.push_str(format!("{}: {}", action, action.get_description()).as_str());
+                        result
+                            .push_str(format!("{}: {}", action, action.get_description()).as_str());
                         if i != Action::iterator().len() - 1 {
                             result.push_str("\n")
                         }

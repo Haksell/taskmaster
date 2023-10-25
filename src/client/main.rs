@@ -1,9 +1,9 @@
-use std::os::unix::net::UnixStream;
-use std::io::{Read, stdout, Write};
-use rustmaster_core::UNIX_DOMAIN_SOCKET_PATH;
-use std::io::stdin;
 use rustmaster_core::api::Action;
 use rustmaster_core::api::Action::Exit;
+use rustmaster_core::UNIX_DOMAIN_SOCKET_PATH;
+use std::io::stdin;
+use std::io::{stdout, Read, Write};
+use std::os::unix::net::UnixStream;
 
 //TODO: clean up, handle errors
 fn main() {
@@ -31,7 +31,8 @@ fn main() {
 
         match Action::from(trimmed) {
             Ok(action) => {
-                let serialized_action = serde_json::to_string(&action).expect("Serialization failed");
+                let serialized_action =
+                    serde_json::to_string(&action).expect("Serialization failed");
                 stream.write_all(serialized_action.as_bytes()).expect("aa");
 
                 let mut response = String::new();
@@ -44,5 +45,3 @@ fn main() {
         }
     }
 }
-
-    

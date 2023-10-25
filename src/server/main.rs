@@ -1,9 +1,9 @@
-use std::collections::BTreeMap;
-use rustmaster_core::{Task, UNIX_DOMAIN_SOCKET_PATH};
-use std::io::{Read, Write};
-use std::os::unix::net::UnixListener;
 use rustmaster_core::api::Action;
 use rustmaster_core::data::Configuration;
+use rustmaster_core::{Task, UNIX_DOMAIN_SOCKET_PATH};
+use std::collections::BTreeMap;
+use std::io::{Read, Write};
+use std::os::unix::net::UnixListener;
 
 fn answer(tasks: &BTreeMap<String, Task>, action: Action) -> String {
     return match action {
@@ -19,22 +19,20 @@ fn answer(tasks: &BTreeMap<String, Task>, action: Action) -> String {
                     }
                     result
                 }
-                Some(task_name) => {
-                    match tasks.get(task_name.as_str()) {
-                        None => format!("Can't find \"{}\" task", task_name),
-                        Some(task) => format!("{}: {}", task_name, task.to_string())
-                    }
-                }
+                Some(task_name) => match tasks.get(task_name.as_str()) {
+                    None => format!("Can't find \"{}\" task", task_name),
+                    Some(task) => format!("{}: {}", task_name, task.to_string()),
+                },
             };
         }
         Action::Help => action.get_description(),
         Action::Config(task_name) => {
             return match tasks.get(task_name.as_str()) {
                 None => format!("Can't find \"{}\" task", task_name),
-                Some(task) => format!("{}: {}", task_name, task.get_json_configuration())
+                Some(task) => format!("{}: {}", task_name, task.get_json_configuration()),
             }
-        },
-        Action::Exit => String::new()
+        }
+        Action::Exit => String::new(),
     };
 }
 
@@ -43,12 +41,15 @@ fn main() {
     let config = Configuration::from_yml(String::from("config_files/main.yml")).unwrap();
     println!("{:?}", config);
 
-    let tasks: BTreeMap<String, Task> = config
+    let mut tasks: BTreeMap<String, Task> = config
         .iter()
         .map(|(key, value)| (key.clone(), Task::new(value.clone())))
         .collect();
     drop(config);
 
+    for (_, task) in &mut tasks {
+        task.run(false);
+    }
 
     let listener = match UnixListener::bind(UNIX_DOMAIN_SOCKET_PATH) {
         Ok(stream) => stream,
@@ -67,8 +68,11 @@ fn main() {
                 }
                 let received_data = String::from_utf8_lossy(&buffer[..bytes_read]);
                 println!("Received: {}", received_data);
-                let recieved_action = serde_json::from_str::<Action>(received_data.to_string().as_str()).unwrap();
-                stream.write(answer(&tasks, recieved_action).as_bytes()).unwrap();
+                let recieved_action =
+                    serde_json::from_str::<Action>(received_data.to_string().as_str()).unwrap();
+                stream
+                    .write(answer(&tasks, recieved_action).as_bytes())
+                    .unwrap();
                 stream.flush().unwrap();
             }
             Err(e) => {
@@ -77,4 +81,3 @@ fn main() {
         }
     }
 }
-

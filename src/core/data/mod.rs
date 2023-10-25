@@ -1,9 +1,9 @@
+use crate::data::StopSignal::TERM;
+use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::BTreeMap;
 use std::fmt::{Display, Formatter};
 use std::fs::File;
 use std::io::Read;
-use serde::{Deserialize, Deserializer, Serialize};
-use crate::data::StopSignal::TERM;
 use validator::{Validate, ValidationError};
 
 #[derive(Debug, PartialEq, Deserialize, Serialize, Clone)]
@@ -24,7 +24,7 @@ pub enum StopSignal {
     QUIT,
     KILL,
     USR1,
-    USR2
+    USR2,
 }
 
 #[derive(Debug)]
@@ -36,7 +36,7 @@ pub enum State {
     BACKOFF,
     EXITED,
     FATAL,
-    UNKNOWN
+    UNKNOWN,
 }
 
 impl Display for State {
@@ -52,7 +52,6 @@ impl Display for State {
             State::UNKNOWN => "unknown",
         };
         write!(f, "{}", keyword)
-        
     }
 }
 
@@ -68,7 +67,7 @@ pub struct Configuration {
     #[validate(custom = "validate_umask")]
     umask: u32,
     #[serde(deserialize_with = "deserialize_option_string_and_trim")]
-    working_dir: Option<String>,
+    pub(crate) working_dir: Option<String>,
     auto_start: bool,
     auto_restart: AutoRestart,
     exit_codes: Vec<u8>,
@@ -106,13 +105,12 @@ impl Default for Configuration {
 
 impl Configuration {
     pub fn from_yml(path: String) -> Result<BTreeMap<String, Configuration>, String> {
-        let mut file = File::open(path)
-            .map_err(|err| format!("Could not open file: {}", err))?;
+        let mut file = File::open(path).map_err(|err| format!("Could not open file: {}", err))?;
         let mut content = String::new();
         file.read_to_string(&mut content)
             .map_err(|err| format!("Can't read the file: {}", err))?;
-        let tasks: BTreeMap<String, Configuration> = serde_yaml::from_str(&content)
-            .map_err(|err| format!("{}", err))?;
+        let tasks: BTreeMap<String, Configuration> =
+            serde_yaml::from_str(&content).map_err(|err| format!("{}", err))?;
         for (key, task) in &tasks {
             match task.validate() {
                 Ok(_) => {}
@@ -122,7 +120,7 @@ impl Configuration {
                             Err(format!("{}: {:?}", key, message.to_string()))
                         } else {
                             Err(format!("{}: {:?}", key, value[0].code))
-                        }
+                        };
                     }
                 }
             }
@@ -139,8 +137,8 @@ fn validate_umask(value: u32) -> Result<(), ValidationError> {
 }
 
 fn deserialize_umask<'de, D>(deserializer: D) -> Result<u32, D::Error>
-    where
-        D: Deserializer<'de>,
+where
+    D: Deserializer<'de>,
 {
     let value = String::deserialize(deserializer)?;
     match u32::from_str_radix(value.as_str(), 8) {
@@ -153,26 +151,25 @@ fn deserialize_umask<'de, D>(deserializer: D) -> Result<u32, D::Error>
 }
 
 fn deserialize_string_and_trim<'de, D>(deserializer: D) -> Result<String, D::Error>
-    where
-        D: Deserializer<'de>,
+where
+    D: Deserializer<'de>,
 {
     String::deserialize(deserializer).map(|s| s.trim().to_string())
 }
 
 fn deserialize_option_string_and_trim<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
-    where
-        D: Deserializer<'de>,
+where
+    D: Deserializer<'de>,
 {
     String::deserialize(deserializer).map(|s| Some(s.trim().to_string()))
 }
 
-
 #[cfg(test)]
 mod tests {
     use crate::data::AutoRestart::Unexpected;
+    use crate::data::Configuration;
     use crate::data::StopSignal::TERM;
     use std::collections::BTreeMap;
-    use crate::data::Configuration;
 
     const CMD_EMPTY: &str = "config_files/test/cmd_empty.yml";
     const CMD_NOT_PROVIDED: &str = "config_files/test/cmd_not_provided.yml";

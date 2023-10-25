@@ -1,5 +1,5 @@
 task1:
-  cmd: "while true; do echo 'Task 1 output'; sleep 3; done"
+  cmd: "echo wololo"
   umask: 022
   working_dir: /tmp
   autostart: true
@@ -16,12 +16,26 @@ task1:
   env:
     STARTED_BY: taskmaster
     ANSWER: 42
-    
 task2:
-  cmd: "while true; do echo 'Task 2 output'; sleep 3; done"
+  cmd: "ls -lah"
   num_procs: 1
   umask: 777
-  working_dir: /tmp
+  working_dir: /home
+  autostart: true
+  auto_restart: unexpected
+  exit_codes:
+    - 0
+    - 2
+  start_retries: 3
+  start_time: 5
+  stop_signal: USR1
+  stop_time: 10
+  stdout: /tmp/task2.stdout
+  stderr: /tmp/task2.stderr
+task3:
+  cmd: "ls -lah"
+  num_procs: 1
+  umask: 777
   autostart: true
   auto_restart: unexpected
   exit_codes:

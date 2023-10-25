@@ -1,12 +1,11 @@
-pub mod data;
 pub mod api;
+pub mod data;
 
-use std::fmt::{Display, Formatter};
-use std::process::{Child, Command};
 use crate::data::Configuration;
 use crate::data::State;
 use crate::data::State::{FATAL, REGISTERED, STARTING};
-
+use std::fmt::{Display, Formatter};
+use std::process::{Child, Command};
 
 pub const UNIX_DOMAIN_SOCKET_PATH: &str = "/tmp/.unixdomain.sock";
 
@@ -18,7 +17,7 @@ pub struct Task {
     state: State,
     _restarts_left: u32,
     child: Option<Child>,
-    _started_at: &'static str //change type
+    _started_at: &'static str, //change type
 }
 
 impl Task {
@@ -28,15 +27,20 @@ impl Task {
             configuration,
             state: REGISTERED,
             child: None,
-            _started_at: "time"
+            _started_at: "time",
         }
     }
-    
+
     pub fn run(&mut self, _force_launch: bool) {
-        //force launch, from client
-        //retries
-        match Command::new(&self.configuration.cmd)
-            .spawn() {
+        let argv: Vec<_> = self.configuration.cmd.split_whitespace().collect();
+        match Command::new(argv[0])
+            .args(&argv[1..])
+            .current_dir(match &self.configuration.working_dir {
+                Some(cwd) => &cwd,
+                None => ".",
+            })
+            .spawn()
+        {
             Ok(child) => {
                 self.child = Some(child);
                 self.state = STARTING;
@@ -47,15 +51,13 @@ impl Task {
             }
         }
     }
-    
-    pub fn stop(&mut self) {
-        
-    }
-    
+
+    pub fn stop(&mut self) {}
+
     pub fn get_state(&self) -> &State {
         &self.state
     }
-    
+
     pub fn get_json_configuration(&self) -> String {
         serde_json::to_string_pretty(&self.configuration).expect("Serialization failed")
     }
