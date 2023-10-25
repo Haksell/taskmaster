@@ -1,3 +1,5 @@
+pub mod error_log;
+
 use crate::api::Action::{Config, Exit, Help, Status};
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -30,8 +32,7 @@ impl Action {
         }
 
         let enum_value = Action::iterator()
-            .filter(|enum_value| enum_value.to_string() == split[0])
-            .next();
+            .find(|enum_value| enum_value.to_string() == split[0]);
 
         if enum_value.is_none() {
             return Err(format!("Unknown action: {}", split[0]));

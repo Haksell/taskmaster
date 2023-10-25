@@ -76,9 +76,9 @@ pub struct Configuration {
     stop_signal: StopSignal,
     stop_time: u32,
     #[serde(deserialize_with = "deserialize_option_string_and_trim")]
-    stdout: Option<String>,
+    pub(crate) stdout: Option<String>,
     #[serde(deserialize_with = "deserialize_option_string_and_trim")]
-    stderr: Option<String>,
+    pub(crate) stderr: Option<String>,
     pub(crate) env: BTreeMap<String, String>,
 }
 

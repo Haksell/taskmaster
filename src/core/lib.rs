@@ -5,7 +5,9 @@ use crate::data::Configuration;
 use crate::data::State;
 use crate::data::State::{FATAL, REGISTERED, STARTING};
 use std::fmt::{Display, Formatter};
-use std::process::{Child, Command};
+use std::fs::{File, OpenOptions};
+use std::process::{Child, Command, Stdio};
+use crate::api::error_log::ErrorLog;
 
 pub const UNIX_DOMAIN_SOCKET_PATH: &str = "/tmp/.unixdomain.sock";
 
@@ -17,7 +19,8 @@ pub struct Task {
     state: State,
     _restarts_left: u32,
     child: Option<Child>,
-    _started_at: &'static str, //change type
+    _started_at: &'static str,
+    logger: ErrorLog,
 }
 
 impl Task {
@@ -28,11 +31,30 @@ impl Task {
             state: REGISTERED,
             child: None,
             _started_at: "time",
+            logger: ErrorLog::new(),
         }
     }
 
-    pub fn run(&mut self, _force_launch: bool) {
+    fn open_file(path: &String) -> Result<File, String> {
+        OpenOptions::new()
+            .append(true)
+            .create(true)
+            .open(path)
+            .map_err(|e| e.to_string())
+    }
+
+
+    fn setup_stream(&self, stream_type: &Option<String>) -> Result<Stdio, String> {
+        match stream_type {
+            Some(path) => Task::open_file(path).map(|file| file.into()),
+            None => Ok(Stdio::null()),
+        }
+    }
+
+
+    fn setup_child_process(&mut self, stderr: Stdio, stdout: Stdio) -> Result<(), String> {
         let argv: Vec<_> = self.configuration.cmd.split_whitespace().collect();
+
         match Command::new(argv[0])
             .args(&argv[1..])
             .current_dir(match &self.configuration.working_dir {
@@ -40,19 +62,44 @@ impl Task {
                 None => ".",
             })
             .envs(&self.configuration.env)
-            .spawn()
-        {
+            .stdout(stdout)
+            .stderr(stderr)
+            .spawn() {
             Ok(child) => {
                 self.child = Some(child);
                 self.state = STARTING;
+                Ok(())
             }
             Err(err) => {
-                println!("{err}");
-                //add logging + exitcode
+                let err_msg = self.logger.log(format!("{err}").as_str(), None);
+                println!("{}", err_msg);
+
                 self.state = FATAL;
+
+                Err(err_msg.to_string())
             }
         }
     }
+
+    pub fn run(&mut self) -> Result<(), String> {
+        let stderr = self.setup_stream(&self.configuration.stderr)
+            .map_err(|e| {
+                self.state = FATAL;
+                self.logger.log(e.as_str(), None).to_string();
+                e
+            })?;
+        let stdout = self.setup_stream(&self.configuration.stdout)
+            .map_err(|e| {
+                self.state = FATAL;
+                self.logger.log(e.as_str(), None).to_string();
+                e
+            })?;
+
+        self.setup_child_process(stderr, stdout)?;
+
+        Ok(())
+    }
+
 
     pub fn stop(&mut self) {}
 

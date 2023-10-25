@@ -48,7 +48,9 @@ fn main() {
     drop(config);
 
     for (_, task) in &mut tasks {
-        task.run(false);
+        if let Err(msg) = task.run() {
+            println!("Error in run: {msg}")
+        }
     }
 
     let listener = match UnixListener::bind(UNIX_DOMAIN_SOCKET_PATH) {
