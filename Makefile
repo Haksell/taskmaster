@@ -27,7 +27,7 @@ client:
 
 clean:
 	$(call rm,$(SOCKET))
-	$(call rm,$(GARBAGE))
+	@rm -rf $(GARBAGE)
 	$(call rm,target)
 
 fclean: clean
