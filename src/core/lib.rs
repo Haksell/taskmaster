@@ -39,13 +39,15 @@ impl Task {
                 Some(cwd) => &cwd,
                 None => ".",
             })
+            .envs(&self.configuration.env)
             .spawn()
         {
             Ok(child) => {
                 self.child = Some(child);
                 self.state = STARTING;
             }
-            Err(_) => {
+            Err(err) => {
+                println!("{err}");
                 //add logging + exitcode
                 self.state = FATAL;
             }

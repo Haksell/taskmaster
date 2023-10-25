@@ -79,7 +79,7 @@ pub struct Configuration {
     stdout: Option<String>,
     #[serde(deserialize_with = "deserialize_option_string_and_trim")]
     stderr: Option<String>,
-    env: BTreeMap<String, String>,
+    pub(crate) env: BTreeMap<String, String>,
 }
 
 impl Default for Configuration {

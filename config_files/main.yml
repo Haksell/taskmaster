@@ -16,11 +16,9 @@ task1:
   env:
     STARTED_BY: taskmaster
     ANSWER: 42
-task2:
-  cmd: "ls -lah"
-  num_procs: 1
-  umask: 777
-  working_dir: /home
+answer:
+  cmd: "./scripts/echo_answer.sh"
+  umask: 022
   autostart: true
   auto_restart: unexpected
   exit_codes:
@@ -28,22 +26,41 @@ task2:
     - 2
   start_retries: 3
   start_time: 5
-  stop_signal: USR1
+  stop_signal: TERM
   stop_time: 10
-  stdout: /tmp/task2.stdout
-  stderr: /tmp/task2.stderr
-task3:
-  cmd: "ls -lah"
-  num_procs: 1
-  umask: 777
-  autostart: true
-  auto_restart: unexpected
-  exit_codes:
-    - 0
-    - 2
-  start_retries: 3
-  start_time: 5
-  stop_signal: USR1
-  stop_time: 10
-  stdout: /tmp/task2.stdout
-  stderr: /tmp/task2.stderr
+  stdout: /tmp/task1.stdout
+  stderr: /tmp/task1.stderr
+  env:
+    STARTED_BY: taskmaster
+    ANSWER: 42
+# task2:
+#   cmd: "ls -lah"
+#   num_procs: 1
+#   umask: 777
+#   working_dir: /home
+#   autostart: true
+#   auto_restart: unexpected
+#   exit_codes:
+#     - 0
+#     - 2
+#   start_retries: 3
+#   start_time: 5
+#   stop_signal: USR1
+#   stop_time: 10
+#   stdout: /tmp/task2.stdout
+#   stderr: /tmp/task2.stderr
+# task3:
+#   cmd: "ls -lah"
+#   num_procs: 1
+#   umask: 777
+#   autostart: true
+#   auto_restart: unexpected
+#   exit_codes:
+#     - 0
+#     - 2
+#   start_retries: 3
+#   start_time: 5
+#   stop_signal: USR1
+#   stop_time: 10
+#   stdout: /tmp/task2.stdout
+#   stderr: /tmp/task2.stderr
