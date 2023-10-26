@@ -2,7 +2,7 @@ use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::time::{Duration, SystemTime};
 
-#[derive(Clone)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct LogMessage {
     timestamp: SystemTime,
     message: String,
@@ -30,6 +30,7 @@ impl Display for LogMessage {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct ErrorLog {
     errors: Vec<LogMessage>,
 }

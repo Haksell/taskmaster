@@ -2,7 +2,7 @@ task1:
   cmd: "echo wololo"
   umask: 022
   working_dir: /tmp
-  autostart: true
+  auto_start: false
   auto_restart: unexpected
   exit_codes:
     - 0
@@ -17,9 +17,9 @@ task1:
     STARTED_BY: taskmaster
     ANSWER: 42
 answer:
-  cmd: "./scripts/echo_answer.sh"
+  cmd: "./scripts/echo_answer_inf_loop.sh"
   umask: 022
-  autostart: true
+  auto_start: false
   auto_restart: unexpected
   exit_codes:
     - 0

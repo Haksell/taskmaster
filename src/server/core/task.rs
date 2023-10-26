@@ -1,13 +1,9 @@
-pub mod api;
-pub mod data;
-
-use crate::data::Configuration;
-use crate::data::State;
-use crate::data::State::{FATAL, REGISTERED, STARTING};
 use std::fmt::{Display, Formatter};
 use std::fs::{File, OpenOptions};
 use std::process::{Child, Command, Stdio};
 use crate::api::error_log::ErrorLog;
+use crate::core::configuration::{Configuration, State};
+use crate::core::configuration::State::{FATAL, REGISTERED, STARTING, STOPPED};
 
 pub const UNIX_DOMAIN_SOCKET_PATH: &str = "/tmp/.unixdomain.sock";
 
@@ -15,7 +11,7 @@ pub const UNIX_DOMAIN_SOCKET_PATH: &str = "/tmp/.unixdomain.sock";
 //TODO: Check existing of working dir
 
 pub struct Task {
-    configuration: Configuration,
+    pub(crate) configuration: Configuration,
     state: State,
     _restarts_left: u32,
     child: Option<Child>,
@@ -101,7 +97,19 @@ impl Task {
     }
 
 
-    pub fn stop(&mut self) {}
+    pub fn stop(&mut self) -> Result<(), String> {
+       return match &mut self.child {
+           None => Err(format!("Can't find child process, probably was already stopped or not stared")),
+           Some(child) => {
+               if let Err(error) = child.kill() {
+                   return Err(format!("Can't kill child process, {}", error))
+               }
+               self.state = STOPPED;
+               self.child = None;
+               Ok(())
+           }
+       } 
+    }
 
     pub fn get_state(&self) -> &State {
         &self.state

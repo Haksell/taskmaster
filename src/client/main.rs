@@ -1,17 +1,18 @@
-use rustmaster_core::api::Action;
-use rustmaster_core::api::Action::Exit;
-use rustmaster_core::UNIX_DOMAIN_SOCKET_PATH;
+mod actions_tmp;
+
 use std::io::stdin;
 use std::io::{stdout, Read, Write};
 use std::os::unix::net::UnixStream;
+use crate::actions_tmp::Action;
+use crate::actions_tmp::Action::Exit;
 
 //TODO: clean up, handle errors
 fn main() {
     loop {
-        let mut stream = match UnixStream::connect(UNIX_DOMAIN_SOCKET_PATH) {
+        let mut stream = match UnixStream::connect("/tmp/.unixdomain.sock") {
             Ok(unix_stream) => unix_stream,
             Err(_) => {
-                eprintln!("Can't connect to \"{}\"", UNIX_DOMAIN_SOCKET_PATH);
+                eprintln!("Can't connect to \"{}\"", "/tmp/.unixdomain.sock");
                 return;
             }
         };
@@ -37,7 +38,9 @@ fn main() {
 
                 let mut response = String::new();
                 stream.read_to_string(&mut response).expect("aaa");
-                println!("{}", response);
+                if response.len() > 0 {
+                    println!("{}", response);
+                }
             }
             Err(err) => {
                 println!("{}", err);

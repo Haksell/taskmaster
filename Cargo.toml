@@ -11,9 +11,6 @@ path = "src/server/main.rs"
 name = "client"
 path = "src/client/main.rs"
 
-[lib]
-name = "rustmaster_core"
-path = "src/core/lib.rs"
 
 [dependencies]
 serde_yaml = "0.9.25"
