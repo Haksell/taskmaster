@@ -22,7 +22,7 @@ fn answer(monitor: &mut Monitor, action: Action) -> String {
                 Some(task) => format!("{}: {}", task_name, task.get_json_configuration()),
             }
         }
-        Action::Exit => String::new(),
+        Action::Exit => exit(0),
         Action::Start(task_name) => match monitor.start_task_by_name(&task_name) {
             Ok(_) => String::new(),
             Err(err_msg) => err_msg,

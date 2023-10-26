@@ -26,9 +26,6 @@ fn main() {
         stdin.read_line(&mut buffer).expect("Can;t");
 
         let trimmed = buffer.trim();
-        if trimmed == Exit.to_string() {
-            break;
-        }
 
         match Action::from(trimmed) {
             Ok(action) => {
@@ -40,6 +37,9 @@ fn main() {
                 stream.read_to_string(&mut response).expect("aaa");
                 if response.len() > 0 {
                     println!("{}", response);
+                }
+                if trimmed == Exit.to_string() {
+                    break;
                 }
             }
             Err(err) => {
