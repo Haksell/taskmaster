@@ -17,9 +17,9 @@ fn answer(monitor: &mut Monitor, action: Action) -> String {
         Action::Status(status) => monitor.get_task_status(status),
         Action::Help => action.get_description(),
         Action::Config(task_name) => {
-            match monitor.get_task_by_name(&task_name) {
+            match monitor.get_task_json_config_by_name(&task_name) {
                 None => format!("Can't find \"{}\" task", task_name),
-                Some(task) => format!("{}: {}", task_name, task.get_json_configuration()),
+                Some(task) => format!("{}: {}", task_name, task),
             }
         }
         Action::Exit => exit(0),
@@ -35,7 +35,6 @@ fn answer(monitor: &mut Monitor, action: Action) -> String {
 }
 
 
-//TODO: clean up, separate to different fn, handle errors
 
 fn get_config_file_name() -> Option<String> {
     let args: Vec<String> = env::args().collect();
@@ -48,6 +47,7 @@ fn get_config_file_name() -> Option<String> {
     Some(args.get(1).unwrap().clone())
 }
 
+//TODO: clean up, separate to different fn, handle errors
 fn main() {
     let mut monitor = Monitor::new();
     if let Some(config_file_name) = get_config_file_name() {
@@ -59,6 +59,8 @@ fn main() {
             }
         }
     }
+    
+    monitor.track();
 
     monitor.run_autostart();
 
