@@ -30,6 +30,7 @@ pub enum StopSignal {
 #[derive(Debug, Eq, PartialEq)]
 pub enum State {
     REGISTERED, //not from supervisor
+    FINISHED, // TODO: delete, here to debug
     STOPPED,
     STARTING,
     RUNNING,
@@ -42,6 +43,7 @@ pub enum State {
 impl Display for State {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let keyword = match self {
+            State::FINISHED => "finished",
             State::REGISTERED => "registered",
             State::STOPPED => "stopped",
             State::STARTING => "starting",
@@ -70,7 +72,7 @@ pub struct Configuration {
     pub(crate) working_dir: Option<String>, 
     pub(crate) auto_start: bool,
     auto_restart: AutoRestart,
-    exit_codes: Vec<u8>,
+    exit_codes: Vec<i32>,
     pub start_retries: u32, //make immutable (e.g. getters?)
     start_time: u32,
     stop_signal: StopSignal,

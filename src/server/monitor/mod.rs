@@ -3,6 +3,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 use crate::core::configuration::Configuration;
+use crate::core::configuration::State::FINISHED;
 use crate::core::task::Task;
 
 pub struct Monitor {
@@ -99,9 +100,23 @@ impl Monitor {
         
         let _handle = thread::spawn(move || {
             loop {
-                let tasks = monitor_clone.lock().unwrap();
-                for (name, task) in tasks.iter() {
+                let mut tasks = monitor_clone.lock().unwrap();
+                for (name, task) in tasks.iter_mut() {
                     println!("I'm in the separate thread: [{}]: {}", name, task.get_state());
+                    if let Some(child) = &mut task.child {
+                        match child.try_wait() {
+                            Ok(Some(status)) => {
+                                println!("{} exited with status {:?}", name, status);
+                                task.state  = FINISHED;
+                                task.exit_code = status.code();
+                                task.child = None
+                            }
+                            Ok(None) => {}
+                            Err(e) => println!("Error attempting to wait: {:?}", e),
+                        }
+                    }
+                    
+                    
                 }
                 drop(tasks);
                 thread::sleep(Duration::from_secs(1));

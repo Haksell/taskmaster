@@ -1,6 +1,7 @@
 use std::fmt::{Display, Formatter};
 use std::fs::{File, OpenOptions};
 use std::process::{Child, Command, Stdio};
+use std::time::SystemTime;
 use crate::api::error_log::ErrorLog;
 use crate::core::configuration::{Configuration, State};
 use crate::core::configuration::State::{FATAL, REGISTERED, STARTING, STOPPED};
@@ -12,10 +13,11 @@ pub const UNIX_DOMAIN_SOCKET_PATH: &str = "/tmp/.unixdomain.sock";
 
 pub struct Task {
     pub(crate) configuration: Configuration,
-    state: State,
+    pub(crate) state: State,
     _restarts_left: u32,
-    child: Option<Child>,
-    _started_at: &'static str,
+    pub(crate) child: Option<Child>,
+    pub(crate) exit_code: Option<i32>,
+    started_at: Option<SystemTime>,
     logger: ErrorLog,
 }
 
@@ -25,8 +27,9 @@ impl Task {
             _restarts_left: configuration.start_retries,
             configuration,
             state: REGISTERED,
+            exit_code: None,
             child: None,
-            _started_at: "time",
+            started_at: None,
             logger: ErrorLog::new(),
         }
     }
@@ -64,6 +67,7 @@ impl Task {
             Ok(child) => {
                 self.child = Some(child);
                 self.state = STARTING;
+                self.started_at = Some(SystemTime::now());
                 Ok(())
             }
             Err(err) => {
