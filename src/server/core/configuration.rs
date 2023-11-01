@@ -64,7 +64,7 @@ pub struct Configuration {
     #[validate(length(min = 1, message = "cmd: can't be empty"))]
     pub(crate) cmd: String, //make immutable (e.g. getters?)
     #[validate(range(min = 1))]
-    num_procs: u32,
+    pub(crate) num_procs: u32,
     #[serde(deserialize_with = "deserialize_umask")]
     #[validate(custom = "validate_umask")]
     umask: u32,

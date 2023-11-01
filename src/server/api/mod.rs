@@ -1,4 +1,3 @@
-pub mod error_log;
 
 use crate::api::Action::{Config, Exit, Help, Start, Status, Stop};
 use serde::{Deserialize, Serialize};
@@ -30,7 +29,7 @@ pub enum Action {
 
 impl Action {
     //TODO: DELETE, will be replaced by py client
-    pub fn from(action: &str) -> Result<Action, String> {
+    pub fn _from(action: &str) -> Result<Action, String> {
         let mut split: Vec<&str> = action.split_whitespace().collect();
         if split.is_empty() {
             return Err(String::new());

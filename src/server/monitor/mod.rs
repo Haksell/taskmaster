@@ -1,3 +1,4 @@
+use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -7,7 +8,7 @@ use crate::core::configuration::State::FINISHED;
 use crate::core::task::Task;
 
 pub struct Monitor {
-    tasks: Arc<Mutex<BTreeMap<String, Task>>>,
+    tasks: Arc<Mutex<BTreeMap<String, Vec<Task>>>>,
 }
 
 impl Monitor {
@@ -20,15 +21,14 @@ impl Monitor {
     pub fn load_configuration(&mut self, configs: BTreeMap<String, Configuration>) {
         let mut tasks = self.tasks.lock().unwrap();
         for (task_name, config) in configs {
-            match tasks.get(task_name.as_str()) {
-                None => {
-                    tasks.insert(task_name, Task::new(config));
+            let update = Task::new(&config);
+            match tasks.entry(task_name) {
+                Entry::Vacant(entry) => {
+                    entry.insert((0..config.num_procs).map(|_| Task::new(&config)).collect());
                 }
-                Some(element) => {
-                    let update = Task::new(config);
-                    if element.configuration != update.configuration {
-                        tasks.insert(task_name, update);
-                        //RESTART
+                Entry::Occupied(mut entry) => {
+                    if entry.get()[0].configuration != update.configuration {
+                        entry.insert((0..config.num_procs).map(|_| Task::new(&config)).collect());
                     }
                 }
             }
@@ -40,18 +40,36 @@ impl Monitor {
         let tasks = self.tasks.lock().unwrap();
         return match task_name {
             None => {
-                let mut result = String::new();
-                for (i, (name, task)) in tasks.iter().enumerate() {
-                    result += format!("{}: {}", name, task).as_str();
-                    if i != tasks.len() - 1 {
-                        result += "\n"
-                    }
-                }
-                result
+                tasks
+                    .iter()
+                    .map(|(name, task)| {
+                        let process_lines: Vec<String> = task
+                            .iter()
+                            .enumerate()
+                            .map(|(position, process)| format!("\n\t{}. {}", position, process))
+                            .collect();
+                        format!(
+                            "{}: {}",
+                            name,
+                            if task.len() == 1 {
+                                task[0].to_string()
+                            } else {
+                                process_lines.join("")
+                            }
+                        )
+                    })
+                    .collect::<Vec<String>>()
+                    .join("\n")
             }
-            Some(task_name) => match tasks.get(task_name.as_str()) {
+            Some(ref task_name) => match tasks.get(task_name.as_str()) {
                 None => format!("Can't find \"{}\" task", task_name),
-                Some(task) => format!("{}: {}", task_name, task.to_string()),
+                Some(task) => {
+                    task.iter()
+                        .enumerate()
+                        .map(|(position, process)| format!("\n\t{}. {}", position, process))
+                        .collect::<Vec<String>>()
+                        .join("\n")
+                }
             },
         };
     }
@@ -59,23 +77,27 @@ impl Monitor {
     pub fn run_autostart(&mut self) {
         let mut tasks = self.tasks.lock().unwrap();
         for (_k, task) in tasks.iter_mut() {
-            if task.configuration.auto_start {
-                let _ = task.run();
+            for process in task {
+                if process.configuration.auto_start {
+                    let _ = process.run();
+                }
             }
         }
     }
 
     pub fn get_task_json_config_by_name(&self, name: &String) -> Option<String> {
         let tasks = self.tasks.lock().unwrap();
-        tasks.get(name.as_str()).map(|task| task.get_json_configuration())
+        tasks.get(name.as_str()).map(|task| task[0].get_json_configuration())
     }
     
     //if it was stopped manually do need to relaunch? check conditions
     pub fn stop_task_by_name(&mut self, name: &String) -> Result<(), String> {
         let mut tasks = self.tasks.lock().unwrap();
         if let Some(task) = tasks.get_mut(name) {
-            if let Err(e_msg) = task.stop() {
-                return Err(format!("Can't stop {}: {}", name, e_msg))
+            for (i, process) in task.iter_mut().enumerate() {
+                if let Err(e_msg) = process.stop() {
+                    return Err(format!("Can't stop {} #{}: {}", name, i, e_msg))
+                }
             }
             Ok(())
         } else {
@@ -86,8 +108,10 @@ impl Monitor {
     pub fn start_task_by_name(&mut self, name: &String) -> Result<(), String> {
         let mut tasks = self.tasks.lock().unwrap();
         if let Some(task) = tasks.get_mut(name) {
-            if let Err(e_msg) = task.run() {
-                return Err(format!("Can't run {}: {}", name, e_msg))
+            for (i, process) in task.iter_mut().enumerate() {
+                if let Err(e_msg) = process.run() {
+                    return Err(format!("Can't run {} #{}: {}", name, i, e_msg))
+                }
             }
             Ok(())
         } else {
@@ -102,76 +126,25 @@ impl Monitor {
             loop {
                 let mut tasks = monitor_clone.lock().unwrap();
                 for (name, task) in tasks.iter_mut() {
-                    println!("I'm in the separate thread: [{}]: {}", name, task.get_state());
-                    if let Some(child) = &mut task.child {
-                        match child.try_wait() {
-                            Ok(Some(status)) => {
-                                println!("{} exited with status {:?}", name, status);
-                                task.state  = FINISHED;
-                                task.exit_code = status.code();
-                                task.child = None
+                    for (i, process) in task.iter_mut().enumerate() {
+                        println!("I'm in the separate thread: [{} #{}]: {}", name, i, process.get_state());
+                        if let Some(child) = &mut process.child {
+                            match child.try_wait() {
+                                Ok(Some(status)) => {
+                                    println!("{} #{} exited with status {:?}", name, i, status);
+                                    process.state = FINISHED;
+                                    process.exit_code = status.code();
+                                    process.child = None
+                                }
+                                Ok(None) => {}
+                                Err(e) => println!("Error attempting to wait: {:?}", e),
                             }
-                            Ok(None) => {}
-                            Err(e) => println!("Error attempting to wait: {:?}", e),
                         }
                     }
-                    
-                    
                 }
                 drop(tasks);
                 thread::sleep(Duration::from_secs(1));
             }  
         });
-        //handle.join().unwrap()
     }
-
-
-    /*
-    fn prototype() {
-        let mut children = vec![child1, child2, child3];
-
-        let (tx, rx) = mpsc::channel();
-        thread::spawn(move || loop {
-            let mut input = String::new();
-            println!("Enter the index of the child process to kill:");
-            std::io::stdin().read_line(&mut input).unwrap();
-            if let Ok(index) = input.trim().parse::<usize>() {
-                tx.send(index).unwrap();
-            } else {
-                println!("Invalid input. Please enter a valid index.");
-            }
-        });
-
-        while !children.is_empty() {
-            if let Ok(index) = rx.try_recv() {
-                if index < children.len() {
-                    children[index].kill().unwrap();
-                    println!("Killed child process at index {}", index);
-                } else {
-                    println!("Invalid index.");
-                }
-            }
-
-            let mut terminated: Vec<usize> = vec![];
-            for (i, child) in children.iter_mut().enumerate() {
-                match child.try_wait() {
-                    Ok(Some(status)) => {
-                        println!("{:?} exited with status {:?}", child, status);
-                        terminated.push(i);
-                    }
-                    Ok(None) => {}
-                    Err(e) => println!("Error attempting to wait: {:?}", e),
-                }
-            }
-
-            children = children
-                .into_iter()
-                .enumerate()
-                .filter(|(i, _child)| !terminated.contains(i))
-                .map(|(_i, child)| child)
-                .collect::<Vec<Child>>();
-        }
-    }
-    
-     */
 }

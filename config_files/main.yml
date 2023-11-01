@@ -1,65 +1,30 @@
-task1:
-  cmd: "echo wololo"
-  umask: 022
-  working_dir: /tmp
-  auto_start: false
-  auto_restart: unexpected
-  exit_codes:
-    - 0
-    - 2
-  start_retries: 3
-  start_time: 5
-  stop_signal: TERM
-  stop_time: 10
-  stdout: /tmp/task1.stdout
-  stderr: /tmp/task1.stderr
-  env:
-    STARTED_BY: taskmaster
-    ANSWER: 42
-answer:
-  cmd: "./scripts/echo_answer_inf_loop.sh"
-  umask: 022
-  auto_start: false
-  auto_restart: unexpected
-  exit_codes:
-    - 0
-    - 2
-  start_retries: 3
-  start_time: 5
-  stop_signal: TERM
-  stop_time: 10
-  stdout: /tmp/task1.stdout
-  stderr: /tmp/task1.stderr
-  env:
-    STARTED_BY: taskmaster
-    ANSWER: 42
-task_exit_code:
-  cmd: "cat -noexist"
-  num_procs: 1
-  umask: 777
-  autostart: true
-  auto_restart: unexpected
-  exit_codes:
-    - 0
-    - 2
-  start_retries: 3
-  start_time: 5
-  stop_signal: USR1
-  stop_time: 10
-  stdout: /tmp/task2.stdout
-  stderr: /tmp/task2.stderr
-# task3:
-#   cmd: "ls -lah"
-#   num_procs: 1
-#   umask: 777
-#   autostart: true
-#   auto_restart: unexpected
-#   exit_codes:
-#     - 0
-#     - 2
-#   start_retries: 3
-#   start_time: 5
-#   stop_signal: USR1
-#   stop_time: 10
-#   stdout: /tmp/task2.stdout
-#   stderr: /tmp/task2.stderr
+#task_exit_code:
+#  cmd: "cat -noexist"
+#  num_procs: 3
+#  umask: 777
+#  auto_start: false
+#  auto_restart: unexpected
+#  exit_codes:
+#    - 0
+#    - 2
+#  start_retries: 3
+#  start_time: 5
+#  stop_signal: USR1
+#  stop_time: 10
+#  stdout: /tmp/task2.stdout
+#  stderr: /tmp/task2.stderr
+ task3:
+   cmd: "ls -lah"
+   num_procs: 5
+   umask: 777
+   auto_start: false
+   auto_restart: unexpected
+   exit_codes:
+     - 0
+     - 2
+   start_retries: 3
+   start_time: 5
+   stop_signal: USR1
+   stop_time: 10
+   stdout: /tmp/task2.stdout
+   stderr: /tmp/task2.stderr

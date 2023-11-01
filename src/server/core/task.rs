@@ -2,7 +2,6 @@ use std::fmt::{Display, Formatter};
 use std::fs::{File, OpenOptions};
 use std::process::{Child, Command, Stdio};
 use std::time::SystemTime;
-use crate::api::error_log::ErrorLog;
 use crate::core::configuration::{Configuration, State};
 use crate::core::configuration::State::{FATAL, REGISTERED, STARTING, STOPPED};
 
@@ -18,19 +17,19 @@ pub struct Task {
     pub(crate) child: Option<Child>,
     pub(crate) exit_code: Option<i32>,
     started_at: Option<SystemTime>,
-    logger: ErrorLog,
+    last_error: Option<String>,
 }
 
 impl Task {
-    pub fn new(configuration: Configuration) -> Task {
+    pub fn new(configuration: &Configuration) -> Task {
         Task {
             _restarts_left: configuration.start_retries,
-            configuration,
+            configuration: configuration.clone(),
             state: REGISTERED,
             exit_code: None,
             child: None,
             started_at: None,
-            logger: ErrorLog::new(),
+            last_error: None
         }
     }
 
@@ -71,12 +70,12 @@ impl Task {
                 Ok(())
             }
             Err(err) => {
-                let err_msg = self.logger.log(format!("{err}").as_str(), None);
-                println!("{}", err_msg);
+                self.last_error = Some(err.to_string());
+                println!("{}", err.to_string());
 
                 self.state = FATAL;
 
-                Err(err_msg.to_string())
+                Err(err.to_string())
             }
         }
     }
@@ -85,13 +84,13 @@ impl Task {
         let stderr = self.setup_stream(&self.configuration.stderr)
             .map_err(|e| {
                 self.state = FATAL;
-                self.logger.log(e.as_str(), None).to_string();
+                self.last_error = Some(e.to_string());
                 e
             })?;
         let stdout = self.setup_stream(&self.configuration.stdout)
             .map_err(|e| {
                 self.state = FATAL;
-                self.logger.log(e.as_str(), None).to_string();
+                self.last_error = Some(e.to_string());
                 e
             })?;
 
