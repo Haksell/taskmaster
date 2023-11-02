@@ -5,6 +5,7 @@ use std::fs::File;
 use std::io::Read;
 use validator::{Validate, ValidationError};
 use crate::core::configuration::StopSignal::TERM;
+use crate::core::logger::Logger;
 
 #[derive(Debug, Eq, PartialEq, Deserialize, Serialize, Clone)]
 pub enum AutoRestart {
@@ -107,21 +108,25 @@ impl Default for Configuration {
 
 impl Configuration {
     pub fn from_yml(path: String) -> Result<BTreeMap<String, Configuration>, String> {
+        let logger = Logger::new();
+        logger.log(format!("Reading {path}"));
         let mut file = File::open(&path).map_err(|err| format!("{}: {}", path, err))?;
         let mut content = String::new();
         file.read_to_string(&mut content)
-            .map_err(|err| format!("Can't read the file: {}", err))?;
+            .map_err(|err| format!("Can't read the file: {err}"))?;
         let tasks: BTreeMap<String, Configuration> =
-            serde_yaml::from_str(&content).map_err(|err| format!("{}", err))?;
+            serde_yaml::from_str(&content).map_err(|err| err.to_string())?;
         for (key, task) in &tasks {
             match task.validate() {
-                Ok(_) => {}
+                Ok(_) => {
+                    logger.log(format!("{key}: validated"))
+                }
                 Err(e) => {
                     for (_k, value) in e.field_errors() {
                         return if let Some(message) = value[0].message.as_ref() {
-                            Err(format!("{}: {:?}", key, message.to_string()))
+                            Err(format!("{key}: {:?}", message.to_string()))
                         } else {
-                            Err(format!("{}: {:?}", key, value[0].code))
+                            Err(format!("{key}: {:?}", value[0].code))
                         };
                     }
                 }
@@ -145,10 +150,7 @@ fn deserialize_umask<'de, D>(deserializer: D) -> Result<u32, D::Error>
     let value = String::deserialize(deserializer)?;
     match u32::from_str_radix(value.as_str(), 8) {
         Ok(umask) => Ok(umask),
-        Err(_) => Err(serde::de::Error::custom(format!(
-            "\"{}\" is not a valid umask.",
-            value
-        ))),
+        Err(_) => Err(serde::de::Error::custom(format!("\"{value}\" is not a valid umask."))),
     }
 }
 

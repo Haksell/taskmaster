@@ -4,8 +4,7 @@ use std::process::{Child, Command, Stdio};
 use std::time::SystemTime;
 use crate::core::configuration::{Configuration, State};
 use crate::core::configuration::State::{FATAL, REGISTERED, STARTING, STOPPED};
-
-pub const UNIX_DOMAIN_SOCKET_PATH: &str = "/tmp/.unixdomain.sock";
+use crate::core::logger::Logger;
 
 //TODO: Validation of stdout/stderr files path
 //TODO: Check existing of working dir
@@ -29,7 +28,7 @@ impl Task {
             exit_code: None,
             child: None,
             started_at: None,
-            last_error: None
+            last_error: None,
         }
     }
 
@@ -71,10 +70,7 @@ impl Task {
             }
             Err(err) => {
                 self.last_error = Some(err.to_string());
-                println!("{}", err.to_string());
-
                 self.state = FATAL;
-
                 Err(err.to_string())
             }
         }
@@ -105,17 +101,13 @@ impl Task {
            None => Err(format!("Can't find child process, probably was already stopped or not stared")),
            Some(child) => {
                if let Err(error) = child.kill() {
-                   return Err(format!("Can't kill child process, {}", error))
+                   return Err(format!("Can't kill child process, {error}"))
                }
                self.state = STOPPED;
                self.child = None;
                Ok(())
            }
        } 
-    }
-
-    pub fn get_state(&self) -> &State {
-        &self.state
     }
 
     pub fn get_json_configuration(&self) -> String {
