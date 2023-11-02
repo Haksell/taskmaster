@@ -6,11 +6,12 @@ use crate::api::Responder;
 use crate::core::configuration::Configuration;
 use crate::core::logger::Logger;
 use crate::monitor::Monitor;
+use daemonize::Daemonize;
 use std::env;
 use std::process::exit;
 
 static mut CONFIG_FILE_NAME: Option<String> = None;
-static mut IS_ENABLED_LOGGING: bool = false;
+static mut IS_DISABLED_DEMONIZE: bool = false;
 const HELP_MESSAGE: &str = "Options are:\n\t--help: Show help info\
     \n\t--debug: Disables daemon mode and shows logs\
     \n\t<path_to_config_file>: Starts server with a configuration";
@@ -23,7 +24,7 @@ unsafe fn parse_arguments() {
                 eprintln!("{}", HELP_MESSAGE);
                 exit(2);
             }
-            "--debug" => IS_ENABLED_LOGGING = true,
+            "--debug" => IS_DISABLED_DEMONIZE = true,
             _ => {
                 if CONFIG_FILE_NAME.is_none() {
                     CONFIG_FILE_NAME = Some(arg.clone());
@@ -40,13 +41,18 @@ unsafe fn parse_arguments() {
     }
 }
 
-//TODO: clean up, separate to different fn, handle errors
+fn run_program(monitor: &mut Monitor) {
+    monitor.track();
+    monitor.run_autostart();
+    Responder::listen(monitor);
+}
+
 fn main() {
     let mut logger = Logger::new();
     let mut monitor: Monitor;
     unsafe {
         parse_arguments();
-        if IS_ENABLED_LOGGING {
+        if IS_DISABLED_DEMONIZE {
             logger = Logger::enable();
             logger.log("The logging was enabled")
         }
@@ -68,8 +74,22 @@ fn main() {
         }
     }
 
-    monitor.track();
-    monitor.run_autostart();
-
-    Responder::listen(&mut monitor);
+    let daemon = Daemonize::new()
+        .pid_file("/var/run/server.pid")
+        .chown_pid_file(true)
+        .working_directory(".");
+    unsafe {
+        if IS_DISABLED_DEMONIZE {
+            run_program(&mut monitor);
+        } else {
+            match daemon.start() {
+                Ok(_) => {
+                    run_program(&mut monitor);
+                }
+                Err(e) => {
+                    eprintln!("Can't daemonize {e}. Check sudo")
+                }
+            }
+        }
+    }
 }
