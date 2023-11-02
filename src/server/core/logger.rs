@@ -17,7 +17,7 @@ impl Logger {
         let seconds = now_in_sec % 60;
         format!("[{:02}:{:02}:{:02}]: ", hours, minutes, seconds)
     }
-    
+
     pub fn new() -> Self {
         let enabled = env::var(LOGGER_STATUS_VARIABLE_NAME)
             .ok()
@@ -35,14 +35,19 @@ impl Logger {
     pub fn log_err<S: AsRef<str>>(&self, message: S) {
         if self.enabled {
             println!("{}{:?}", Logger::get_timestamp(), message.as_ref());
-        } else { 
+        } else {
             eprintln!("{}", message.as_ref())
         }
     }
 
     pub fn log_with_prefix<S: AsRef<str>>(&self, prefix: S, message: S) {
         if self.enabled {
-            println!("[{}] {}{:?}", prefix.as_ref(), Logger::get_timestamp(), message.as_ref());
+            println!(
+                "[{}] {}{:?}",
+                prefix.as_ref(),
+                Logger::get_timestamp(),
+                message.as_ref()
+            );
         }
     }
 

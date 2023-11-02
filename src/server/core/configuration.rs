@@ -1,11 +1,11 @@
+use crate::core::configuration::StopSignal::TERM;
+use crate::core::logger::Logger;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::BTreeMap;
 use std::fmt::{Display, Formatter};
 use std::fs::File;
 use std::io::Read;
 use validator::{Validate, ValidationError};
-use crate::core::configuration::StopSignal::TERM;
-use crate::core::logger::Logger;
 
 #[derive(Debug, Eq, PartialEq, Deserialize, Serialize, Clone)]
 pub enum AutoRestart {
@@ -31,7 +31,7 @@ pub enum StopSignal {
 #[derive(Debug, Eq, PartialEq)]
 pub enum State {
     REGISTERED, //not from supervisor
-    FINISHED, // TODO: delete, here to debug
+    FINISHED,   // TODO: delete, here to debug
     STOPPED,
     STARTING,
     RUNNING,
@@ -70,7 +70,7 @@ pub struct Configuration {
     #[validate(custom = "validate_umask")]
     umask: u32,
     #[serde(deserialize_with = "deserialize_option_string_and_trim")]
-    pub(crate) working_dir: Option<String>, 
+    pub(crate) working_dir: Option<String>,
     pub(crate) auto_start: bool,
     auto_restart: AutoRestart,
     exit_codes: Vec<i32>,
@@ -118,9 +118,7 @@ impl Configuration {
             serde_yaml::from_str(&content).map_err(|err| err.to_string())?;
         for (key, task) in &tasks {
             match task.validate() {
-                Ok(_) => {
-                    logger.log(format!("{key}: validated"))
-                }
+                Ok(_) => logger.log(format!("{key}: validated")),
                 Err(e) => {
                     for (_k, value) in e.field_errors() {
                         return if let Some(message) = value[0].message.as_ref() {
@@ -144,36 +142,38 @@ fn validate_umask(value: u32) -> Result<(), ValidationError> {
 }
 
 fn deserialize_umask<'de, D>(deserializer: D) -> Result<u32, D::Error>
-    where
-        D: Deserializer<'de>,
+where
+    D: Deserializer<'de>,
 {
     let value = String::deserialize(deserializer)?;
     match u32::from_str_radix(value.as_str(), 8) {
         Ok(umask) => Ok(umask),
-        Err(_) => Err(serde::de::Error::custom(format!("\"{value}\" is not a valid umask."))),
+        Err(_) => Err(serde::de::Error::custom(format!(
+            "\"{value}\" is not a valid umask."
+        ))),
     }
 }
 
 fn deserialize_string_and_trim<'de, D>(deserializer: D) -> Result<String, D::Error>
-    where
-        D: Deserializer<'de>,
+where
+    D: Deserializer<'de>,
 {
     String::deserialize(deserializer).map(|s| s.trim().to_string())
 }
 
 fn deserialize_option_string_and_trim<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
-    where
-        D: Deserializer<'de>,
+where
+    D: Deserializer<'de>,
 {
     String::deserialize(deserializer).map(|s| Some(s.trim().to_string()))
 }
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
     use crate::core::configuration::AutoRestart::Unexpected;
     use crate::core::configuration::Configuration;
     use crate::core::configuration::StopSignal::TERM;
+    use std::collections::BTreeMap;
 
     const CMD_EMPTY: &str = "config_files/test/cmd_empty.yml";
     const CMD_NOT_PROVIDED: &str = "config_files/test/cmd_not_provided.yml";

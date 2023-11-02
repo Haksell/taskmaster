@@ -2,20 +2,18 @@ mod api;
 mod core;
 mod monitor;
 
-use std::env;
-use std::process::exit;
 use crate::api::Responder;
 use crate::core::configuration::Configuration;
 use crate::core::logger::Logger;
 use crate::monitor::Monitor;
-
+use std::env;
+use std::process::exit;
 
 static mut CONFIG_FILE_NAME: Option<String> = None;
 static mut IS_ENABLED_LOGGING: bool = false;
 const HELP_MESSAGE: &str = "Options are:\n\t--help: Show help info\
     \n\t--debug: Disables daemon mode and shows logs\
     \n\t<path_to_config_file>: Starts server with a configuration";
-
 
 unsafe fn parse_arguments() {
     let args: Vec<String> = env::args().skip(1).collect();
@@ -30,7 +28,11 @@ unsafe fn parse_arguments() {
                 if CONFIG_FILE_NAME.is_none() {
                     CONFIG_FILE_NAME = Some(arg.clone());
                 } else {
-                    eprintln!("Error: Config file path is already defined: {}. What is {}?", CONFIG_FILE_NAME.clone().unwrap(), arg);
+                    eprintln!(
+                        "Error: Config file path is already defined: {}. What is {}?",
+                        CONFIG_FILE_NAME.clone().unwrap(),
+                        arg
+                    );
                     exit(1);
                 }
             }
@@ -40,7 +42,7 @@ unsafe fn parse_arguments() {
 
 //TODO: clean up, separate to different fn, handle errors
 fn main() {
-    let mut logger= Logger::new();
+    let mut logger = Logger::new();
     let mut monitor: Monitor;
     unsafe {
         parse_arguments();
@@ -50,7 +52,10 @@ fn main() {
         }
         monitor = Monitor::new();
         if let Some(file_name) = CONFIG_FILE_NAME.clone() {
-            logger.log(format!("Configuration file [{}] was provided on start", file_name));
+            logger.log(format!(
+                "Configuration file [{}] was provided on start",
+                file_name
+            ));
             match Configuration::from_yml(String::from(file_name)) {
                 Ok(conf) => monitor.load_configuration(conf),
                 Err(err_msg) => {

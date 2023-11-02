@@ -1,4 +1,3 @@
-
 use crate::api::Action::{Config, Exit, Help, Start, Status, Stop};
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -36,8 +35,7 @@ impl Action {
             return Err(String::new());
         }
 
-        let enum_value = Action::iterator()
-            .find(|enum_value| enum_value.to_string() == split[0]);
+        let enum_value = Action::iterator().find(|enum_value| enum_value.to_string() == split[0]);
 
         if enum_value.is_none() {
             return Err(format!("Unknown action: {}", split[0]));
@@ -49,7 +47,9 @@ impl Action {
         match result {
             Status(_) => {
                 if split.len() > 1 {
-                    Err(format!("{result}: doesn't take more then 1 argument (task name)"))
+                    Err(format!(
+                        "{result}: doesn't take more then 1 argument (task name)"
+                    ))
                 } else if split.len() == 1 {
                     Ok(Status(Some(split[0].to_string())))
                 } else {
@@ -107,7 +107,7 @@ impl Action {
             Exit,
             Config(String::new()),
             Start(String::new()),
-            Stop(String::new())
+            Stop(String::new()),
         ];
         ACTIONS.iter()
     }
@@ -145,7 +145,7 @@ impl fmt::Display for Action {
             Exit => API_KEYWORD_EXIT,
             Config(_) => API_KEYWORD_CONFIG,
             Start(_) => API_KEYWORD_START,
-            Stop(_) => API_KEYWORD_STOP
+            Stop(_) => API_KEYWORD_STOP,
         };
         write!(f, "{}", keyword)
     }

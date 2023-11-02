@@ -1,10 +1,10 @@
+use crate::api::action::Action;
+use crate::core::logger::Logger;
+use crate::monitor::Monitor;
 use std::borrow::Cow;
 use std::io::{Read, Write};
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::process::exit;
-use crate::api::action::Action;
-use crate::core::logger::Logger;
-use crate::monitor::Monitor;
 
 pub mod action;
 
@@ -13,7 +13,7 @@ pub const UNIX_DOMAIN_SOCKET_PATH: &str = "/tmp/.unixdomain.sock";
 pub struct Responder<'a> {
     logger: &'a Logger,
     stream: UnixStream,
-    monitor: &'a mut Monitor
+    monitor: &'a mut Monitor,
 }
 
 impl<'a> Responder<'a> {
@@ -21,9 +21,11 @@ impl<'a> Responder<'a> {
         let logger = Logger::new();
         return match UnixListener::bind(UNIX_DOMAIN_SOCKET_PATH) {
             Ok(stream) => {
-                logger.log(format!("Socket was successfully created: {UNIX_DOMAIN_SOCKET_PATH}"));
+                logger.log(format!(
+                    "Socket was successfully created: {UNIX_DOMAIN_SOCKET_PATH}"
+                ));
                 stream
-            },
+            }
             Err(_) => {
                 logger.log_err(format!("Can't bind socket \"{UNIX_DOMAIN_SOCKET_PATH}\""));
                 exit(2);
@@ -33,7 +35,9 @@ impl<'a> Responder<'a> {
 
     fn write_message(&mut self, message: &String) {
         if let Err(e) = self.stream.write(message.as_bytes()) {
-            self.logger.log(format!("Can't answer to the client with message: \"{message}\": {e}"))
+            self.logger.log(format!(
+                "Can't answer to the client with message: \"{message}\": {e}"
+            ))
         }
         if let Err(e) = self.stream.flush() {
             self.logger.log(format!("Can't flush the stdout: {e}"))
@@ -65,7 +69,7 @@ impl<'a> Responder<'a> {
                     let mut listener = Responder {
                         logger: &logger,
                         stream,
-                        monitor
+                        monitor,
                     };
                     let mut buffer = [0; 1024];
                     match listener.stream.read(&mut buffer) {
@@ -87,4 +91,3 @@ impl<'a> Responder<'a> {
         }
     }
 }
-
