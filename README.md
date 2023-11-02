@@ -1,6 +1,7 @@
 # Rustmaster
 
 # Menu
+
 - [Run](#id-section0)
 - [Client Commands](#id-section2)
 - [Config file](#id-section1)
@@ -10,33 +11,95 @@
 ## Run
 
 -------------
+
 ### Launch Virtual Machine
+
 #### manually
+
 ```bash
 vagrant up && vagrant ssh
 ```
 
 #### using Makefile
+
 ```bash
 make vagrant
 ```
 
 -------------
-### Run server
-#### manually
+
+### Run deamonized server
+
+Server is always deamonized. To stop it look:
+
+- make stop
+
+To launch it not deamozied look:
+
+- make debug
+
+#### manually without config on the start
+
 ```bash
-rm -rf .unixdomain.sock && cargo run --bin server
+sudo rm -rf .unixdomain.sock && sudo cargo run --bin server
 ```
+
+#### manually with config on the start
+
+```bash
+sudo rm -rf .unixdomain.sock && sudo cargo run --bin server /tmp/path/to/config.yml
+```
+
 ! **rm -rf .unixdomain.sock** is here to remove created unix domain socket (will be handled after implementing signals)
 
 #### using Makefile
+
 ```bash
 make server
 ```
 
 -------------
 
+### Run not deamozied server in debug mode
+
+#### manually without config on the start
+
+```bash
+sudo rm -rf .unixdomain.sock && sudo cargo run --bin server -- --debug
+```
+
+#### manually with config on the start
+
+```bash
+sudo rm -rf .unixdomain.sock && sudo cargo run --bin server /tmp/path/to/config.yml --debug
+```
+
+#### using Makefile
+
+```bash
+make debug
+```
+
+-------------
+
+### Stop deamon
+
+#### manually
+
+```bash
+sudo kill -TERM $(sudo cat /var/run/server.pid); sudo rm -rf /var/run/server.pid
+```
+
+#### using Makefile
+
+```bash
+make stop
+```
+
+-------------
+
 ### Run client
+
 #### manually
 
 ```bash
@@ -44,6 +107,7 @@ cargo run --bin client
 ```
 
 #### using Makefile
+
 ```bash
 make client
 ```
@@ -51,6 +115,7 @@ make client
 -------------
 
 #### Run tests
+
 ```bash
 cargo test
 ```
@@ -58,9 +123,11 @@ cargo test
 -------------
 
 ### Clean
+
 ```bash
 make clean
 ```
+
 ```bash
 make fclean
 ```
@@ -70,30 +137,31 @@ make fclean
 <div id='id-section2'/>
 
 ## Client Actions
+
 ### Implemented
 
 - **status**:
-  - Description: Returns a list of programs with their statuses.
+    - Description: Returns a list of programs with their statuses.
 
 - **status <task_name>**
-  - Description: Returns a task with their status.
+    - Description: Returns a task with their status.
 
 - **config <task_name>**
-  - Description: Returns a task configuration in json. Not in supervisor.
+    - Description: Returns a task configuration in json. Not in supervisor.
 
 - **help**
-  - Description: Returns a list of available actions with description
+    - Description: Returns a list of available actions with description
 
 - **exit**
-  - Description: Closes CLI
+    - Description: Closes CLI
 
 ### Not implemented
 
 - **reload**:
-  - Description: Reloads the configuration while tracking changes.
+    - Description: Reloads the configuration while tracking changes.
 
 - **stop all**:
-  - Description: Stops all programs.
+    - Description: Stops all programs.
 
 - **other commands**
 
@@ -103,73 +171,75 @@ make fclean
 
 **Only cmd field is mandatory for config, for other they are default values**
 
-- **cmd**: 
-  - Type: string
-  - Default value: No default value
-  - Description: The command to use to launch the program
+- **cmd**:
+    - Type: string
+    - Default value: No default value
+    - Description: The command to use to launch the program
 
-- **num_procs**: 
-  - Type: positive integer (not zero)
-  - Default value: 1
-  - Description: The number of processes to start and keep running
+- **num_procs**:
+    - Type: positive integer (not zero)
+    - Default value: 1
+    - Description: The number of processes to start and keep running
 
-- **umask**: 
-  - Type: positive integer
-  - Default value: 0o022
-  - Description: An umask to set before launching the program
+- **umask**:
+    - Type: positive integer
+    - Default value: 0o022
+    - Description: An umask to set before launching the program
 
-- **working_dir**: 
-  - Type: string
-  - Default value: current dir
-  - Description: A working directory to set before launching the program
+- **working_dir**:
+    - Type: string
+    - Default value: current dir
+    - Description: A working directory to set before launching the program
 
-- **auto_start**: 
-  - Type: boolean
-  - Default value: true
-  - Description: Whether to start this program at launch or not
+- **auto_start**:
+    - Type: boolean
+    - Default value: true
+    - Description: Whether to start this program at launch or not
 
-- **auto_restart**: 
-  - Type: Autorestart enum
-  - Default value: unexpected
-  - Description: Specifies if **taskmaster** should automatically restart a process if it exits when it is in the `RUNNING` state. 
-  - Values: `false`, `unexpected`, or `true`
+- **auto_restart**:
+    - Type: Autorestart enum
+    - Default value: unexpected
+    - Description: Specifies if **taskmaster** should automatically restart a process if it exits when it is in
+      the `RUNNING` state.
+    - Values: `false`, `unexpected`, or `true`
 
-- **exit_codes**: 
-  - Type: Vector of positive integers (**maybe change to set in the future**)
-  - Default value: [0]
-  - Description: Defines which return codes represent an "expected" exit status
+- **exit_codes**:
+    - Type: Vector of positive integers (**maybe change to set in the future**)
+    - Default value: [0]
+    - Description: Defines which return codes represent an "expected" exit status
 
-- **start_retries**: 
-  - Type: positive integer
-  - Default value: 3
-  - Description: How many times a restart should be attempted before aborting
+- **start_retries**:
+    - Type: positive integer
+    - Default value: 3
+    - Description: How many times a restart should be attempted before aborting
 
-- **start_time**: 
-  - Type: positive integer
-  - Default value: 1
-  - Description: How long the program should be running after it’s started for it to be considered "successfully started"
+- **start_time**:
+    - Type: positive integer
+    - Default value: 1
+    - Description: How long the program should be running after it’s started for it to be considered "successfully
+      started"
 
-- **stop_signal**: 
-  - Type: Signal (e.g., integer or enum)
-  - Default value: TERM
-  - Description: Specifies which signal should be used to stop (i.e., exit gracefully) the program
+- **stop_signal**:
+    - Type: Signal (e.g., integer or enum)
+    - Default value: TERM
+    - Description: Specifies which signal should be used to stop (i.e., exit gracefully) the program
 
-- **stop_time**: 
-  - Type: positive integer
-  - Default value: 10
-  - Description: How long to wait after a graceful stop before killing the program
+- **stop_time**:
+    - Type: positive integer
+    - Default value: 10
+    - Description: How long to wait after a graceful stop before killing the program
 
-- **stdout**: 
-  - Type: string
-  - Default value: None (**need to decide, maybe /tmp/taskname.stdout**)
-  - Description: Options to discard the program’s standard output (stdout) or to redirect it to a file
+- **stdout**:
+    - Type: string
+    - Default value: None (**need to decide, maybe /tmp/taskname.stdout**)
+    - Description: Options to discard the program’s standard output (stdout) or to redirect it to a file
 
-- **stderr**: 
-  - Type: string
-  - Default value: None (**need to decide, maybe /tmp/taskname.stderr**)
-  - Description: Options to discard the program’s standard error (stderr) or to redirect it to a file
+- **stderr**:
+    - Type: string
+    - Default value: None (**need to decide, maybe /tmp/taskname.stderr**)
+    - Description: Options to discard the program’s standard error (stderr) or to redirect it to a file
 
-- **env**: 
-  - Type: Map of key-value pairs (String, String)
-  - Default value: Empty
-  - Description: Environment variables to set before launching the program
+- **env**:
+    - Type: Map of key-value pairs (String, String)
+    - Default value: Empty
+    - Description: Environment variables to set before launching the program
