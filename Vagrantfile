@@ -15,6 +15,8 @@ Vagrant.configure("2") do |config|
     
     su -l vagrant -s "/bin/sh" -c "curl https://sh.rustup.rs -sSf | sh -s -- -y"
 
+    sudo /home/vagrant/.cargo/bin/rustup default stable
+
     su -l vagrant -s "/bin/sh" -c "curl -fsSO https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh; chmod 755 install.sh; ./install.sh --unattended"
     
     chsh -s /bin/zsh vagrant

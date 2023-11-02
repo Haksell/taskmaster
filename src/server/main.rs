@@ -87,7 +87,7 @@ fn main() {
                     run_program(&mut monitor);
                 }
                 Err(e) => {
-                    eprintln!("Can't daemonize {e}. Check sudo")
+                    eprintln!("Can't daemonize {e}. Already launched or check sudo")
                 }
             }
         }

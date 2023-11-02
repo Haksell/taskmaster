@@ -1,4 +1,5 @@
 SOCKET := /tmp/.unixdomain.sock
+PID_FILE := /var/run/server.pid
 
 GARBAGE := *VBox*.log
 
@@ -7,7 +8,7 @@ RED := \033[1m\033[31m
 
 define rm
 @if [ -e "$(1)" ]; then \
-	rm -rf "$(1)"; \
+	sudo rm -rf "$(1)"; \
 	echo "$(RED)[X] $(1) removed.$(RESET)"; \
 fi
 endef
@@ -20,13 +21,21 @@ vagrant:
 
 server:
 	$(call rm,$(SOCKET))
-	cargo run --bin server
+	sudo cargo run --bin server
+
+debug:
+	$(call rm,$(SOCKET))
+	sudo cargo run --bin server -- --debug
+
+stop:
+	-@sudo kill -TERM $$(sudo cat $(PID_FILE))
+	$(call rm,$(PID_FILE))
 
 client:
-	cargo run --bin client
+	sudo cargo run --bin client
 
-clean:
-	$(call rm,$(SOCKET))
+clean:  stop
+	$(call sudo,rm,$(SOCKET))
 	@rm -rf $(GARBAGE)
 	$(call rm,target)
 
