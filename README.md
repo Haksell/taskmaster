@@ -153,12 +153,18 @@ make fclean
     - Description: Returns a list of available actions with description
 
 - **exit**
-    - Description: Closes CLI
+    - Description: Closes the CLI and the daemon
+
+- **update <config_path>**:
+    - Description: Reloads the configuration tracking changes.
+
+- **start <task_name>**:
+    - Description: Start task by its name.
+
+- **stop <task_name>**:
+    - Description: Stop task by its name.
 
 ### Not implemented
-
-- **reload**:
-    - Description: Reloads the configuration while tracking changes.
 
 - **stop all**:
     - Description: Stops all programs.

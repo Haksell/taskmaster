@@ -1,8 +1,8 @@
+use crate::actions_tmp::Action::{Config, Exit, Help, Start, Status, Stop, Update};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fmt::Formatter;
 use std::slice::Iter;
-use crate::actions_tmp::Action::{Config, Exit, Help, Start, Status, Stop};
 
 pub const API_KEYWORD_HELP: &'static str = "help";
 pub const API_KEYWORD_STATUS: &'static str = "status";
@@ -16,9 +16,11 @@ pub const API_EXIT_DESCR: &'static str = "exit from the CLI";
 pub const API_CONFIG_DESCR: &'static str = "config <task_name> returns configuration details";
 
 //TODO: add unit tests
+//TODO: Refactor after changing client to py
 #[derive(Eq, PartialEq, Serialize, Deserialize, Clone)]
 pub enum Action {
     Config(String),
+    Update(String),
     Status(Option<String>),
     Start(String),
     Stop(String),
@@ -28,14 +30,13 @@ pub enum Action {
 
 impl Action {
     //TODO: DELETE, will be replaced by py client
-    pub fn from(action: &str) -> Result<Action, String> {
+    pub fn _from(action: &str) -> Result<Action, String> {
         let mut split: Vec<&str> = action.split_whitespace().collect();
         if split.is_empty() {
             return Err(String::new());
         }
 
-        let enum_value = Action::iterator()
-            .find(|enum_value| enum_value.to_string() == split[0]);
+        let enum_value = Action::iterator().find(|enum_value| enum_value.to_string() == split[0]);
 
         if enum_value.is_none() {
             return Err(format!("Unknown action: {}", split[0]));
@@ -48,8 +49,7 @@ impl Action {
             Status(_) => {
                 if split.len() > 1 {
                     Err(format!(
-                        "{}: doesn't take more then 1 argument (task name)",
-                        result.to_string()
+                        "{result}: doesn't take more then 1 argument (task name)"
                     ))
                 } else if split.len() == 1 {
                     Ok(Status(Some(split[0].to_string())))
@@ -98,17 +98,28 @@ impl Action {
                 }
             }
             Exit => Ok(Exit),
+            Update(_) => {
+                if split.len() != 1 {
+                    Err(format!(
+                        "{}: should have 1 argument (config file path)",
+                        result.to_string()
+                    ))
+                } else {
+                    Ok(Update(split[0].to_string()))
+                }
+            }
         }
     }
 
     pub fn iterator() -> Iter<'static, Action> {
-        static ACTIONS: [Action; 6] = [
+        static ACTIONS: [Action; 7] = [
             Status(None),
             Help,
             Exit,
             Config(String::new()),
             Start(String::new()),
-            Stop(String::new())
+            Stop(String::new()),
+            Update(String::new()),
         ];
         ACTIONS.iter()
     }
@@ -117,6 +128,7 @@ impl Action {
     pub fn get_description(&self) -> String {
         match self {
             Start(_) => String::from("descr"),
+            Update(_) => String::from("descr"),
             Stop(_) => String::from("descr"),
             Status(_) => String::from(API_STATUS_DESCR),
             Exit => String::from(API_EXIT_DESCR),
@@ -146,7 +158,8 @@ impl fmt::Display for Action {
             Exit => API_KEYWORD_EXIT,
             Config(_) => API_KEYWORD_CONFIG,
             Start(_) => API_KEYWORD_START,
-            Stop(_) => API_KEYWORD_STOP
+            Stop(_) => API_KEYWORD_STOP,
+            Update(_) => "update",
         };
         write!(f, "{}", keyword)
     }

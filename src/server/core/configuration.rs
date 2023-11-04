@@ -5,6 +5,7 @@ use std::collections::BTreeMap;
 use std::fmt::{Display, Formatter};
 use std::fs::File;
 use std::io::Read;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use validator::{Validate, ValidationError};
 
 #[derive(Debug, Eq, PartialEq, Deserialize, Serialize, Clone)]
@@ -26,33 +27,69 @@ pub enum StopSignal {
     KILL,
     USR1,
     USR2,
+    OTHER(String),
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub enum State {
-    REGISTERED, //not from supervisor
-    FINISHED,   // TODO: delete, here to debug
-    STOPPED,
+    FINISHED, // TODO: delete, here to debug
+    STOPPED(Option<SystemTime>),
     STARTING,
-    RUNNING,
+    RUNNING(SystemTime),
     BACKOFF,
-    EXITED,
-    FATAL,
-    UNKNOWN,
+    _EXITED,
+    FATAL(String),
+    _UNKNOWN,
+}
+
+impl Display for StopSignal {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TERM => write!(f, "TERM"),
+            StopSignal::HUP => write!(f, "HUP"),
+            StopSignal::INT => write!(f, "INT"),
+            StopSignal::QUIT => write!(f, "QUIT"),
+            StopSignal::KILL => write!(f, "KILL"),
+            StopSignal::USR1 => write!(f, "USR1"),
+            StopSignal::USR2 => write!(f, "USR2"),
+            StopSignal::OTHER(custom) => write!(f, "{custom}"),
+        }
+    }
 }
 
 impl Display for State {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let keyword = match self {
-            State::FINISHED => "finished",
-            State::REGISTERED => "registered",
-            State::STOPPED => "stopped",
-            State::STARTING => "starting",
-            State::RUNNING => "running",
-            State::BACKOFF => "backoff",
-            State::EXITED => "exited",
-            State::FATAL => "fatal",
-            State::UNKNOWN => "unknown",
+            State::FINISHED => "finished".to_string(),
+            State::STOPPED(stopped_at) => match stopped_at {
+                None => "stopped".to_string(),
+                Some(stopped_at) => {
+                    let since_the_epoch = stopped_at.duration_since(UNIX_EPOCH).unwrap();
+                    let now_in_sec = since_the_epoch.as_secs();
+                    let hours = (now_in_sec % (24 * 3600)) / 3600;
+                    let minutes = (now_in_sec % 3600) / 60;
+                    let seconds = now_in_sec % 60;
+                    format!("stopped\tat {:02}:{:02}:{:02}", hours, minutes, seconds)
+                }
+            },
+            State::STARTING => "starting".to_string(),
+            State::RUNNING(start_time) => {
+                let current_time = SystemTime::now();
+                let elapsed_time = current_time
+                    .duration_since(start_time.clone())
+                    .unwrap_or(Duration::from_secs(0));
+                let elapsed_time_seconds = elapsed_time.as_secs();
+                let hours = elapsed_time_seconds / 3600;
+                let minutes = (elapsed_time_seconds % 3600) / 60;
+                let seconds = elapsed_time_seconds % 60;
+                format!("running\tuptime {:02}:{:02}:{:02}", hours, minutes, seconds)
+            }
+            State::BACKOFF => "backoff".to_string(),
+            State::_EXITED => "exited".to_string(),
+            State::FATAL(error) => {
+                format!("fatal\t{error}")
+            }
+            State::_UNKNOWN => "unknown".to_string(),
         };
         write!(f, "{}", keyword)
     }
@@ -75,8 +112,8 @@ pub struct Configuration {
     auto_restart: AutoRestart,
     exit_codes: Vec<i32>,
     pub start_retries: u32, //make immutable (e.g. getters?)
-    start_time: u32,
-    stop_signal: StopSignal,
+    pub(crate) start_time: u64,
+    pub stop_signal: StopSignal,
     stop_time: u32,
     #[serde(deserialize_with = "deserialize_option_string_and_trim")]
     pub(crate) stdout: Option<String>,
@@ -108,7 +145,7 @@ impl Default for Configuration {
 
 impl Configuration {
     pub fn from_yml(path: String) -> Result<BTreeMap<String, Configuration>, String> {
-        let logger = Logger::new();
+        let logger = Logger::new(None);
         logger.log(format!("Reading {path}"));
         let mut file = File::open(&path).map_err(|err| format!("{}: {}", path, err))?;
         let mut content = String::new();

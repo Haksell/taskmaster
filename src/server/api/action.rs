@@ -1,3 +1,4 @@
+use crate::api::action::Action::Update;
 use crate::api::Action::{Config, Exit, Help, Start, Status, Stop};
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -20,6 +21,7 @@ pub const API_CONFIG_DESCR: &'static str = "config <task_name> returns configura
 #[derive(Eq, PartialEq, Serialize, Deserialize, Clone)]
 pub enum Action {
     Config(String),
+    Update(String),
     Status(Option<String>),
     Start(String),
     Stop(String),
@@ -97,17 +99,28 @@ impl Action {
                 }
             }
             Exit => Ok(Exit),
+            Update(_) => {
+                if split.len() != 1 {
+                    Err(format!(
+                        "{}: should have 1 argument (config file path)",
+                        result.to_string()
+                    ))
+                } else {
+                    Ok(Update(split[0].to_string()))
+                }
+            }
         }
     }
 
     pub fn iterator() -> Iter<'static, Action> {
-        static ACTIONS: [Action; 6] = [
+        static ACTIONS: [Action; 7] = [
             Status(None),
             Help,
             Exit,
             Config(String::new()),
             Start(String::new()),
             Stop(String::new()),
+            Update(String::new()),
         ];
         ACTIONS.iter()
     }
@@ -116,6 +129,7 @@ impl Action {
     pub fn get_description(&self) -> String {
         match self {
             Start(_) => String::from("descr"),
+            Update(_) => String::from("descr"),
             Stop(_) => String::from("descr"),
             Status(_) => String::from(API_STATUS_DESCR),
             Exit => String::from(API_EXIT_DESCR),
@@ -146,6 +160,7 @@ impl fmt::Display for Action {
             Config(_) => API_KEYWORD_CONFIG,
             Start(_) => API_KEYWORD_START,
             Stop(_) => API_KEYWORD_STOP,
+            Update(_) => "update",
         };
         write!(f, "{}", keyword)
     }

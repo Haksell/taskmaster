@@ -5,6 +5,7 @@ const LOGGER_STATUS_VARIABLE_NAME: &'static str = "RUST_LOGGER_ENABLED";
 const LOGGER_ENABLED: &'static str = "1";
 pub struct Logger {
     enabled: bool,
+    prefix: Option<&'static str>,
 }
 
 impl Logger {
@@ -18,17 +19,24 @@ impl Logger {
         format!("[{:02}:{:02}:{:02}]: ", hours, minutes, seconds)
     }
 
-    pub fn new() -> Self {
+    pub fn new(prefix: Option<&'static str>) -> Self {
         let enabled = env::var(LOGGER_STATUS_VARIABLE_NAME)
             .ok()
             .map(|s| s == LOGGER_ENABLED)
             .unwrap_or(false);
-        Logger { enabled }
+        Logger { enabled, prefix }
     }
 
     pub fn log<S: AsRef<str>>(&self, message: S) {
         if self.enabled {
-            println!("{}{:?}", Logger::get_timestamp(), message.as_ref());
+            match self.prefix.as_ref() {
+                None => println!("{}{:?}", Logger::get_timestamp(), message.as_ref()),
+                Some(prefix) => println!(
+                    "[{prefix}] {}{:?}",
+                    Logger::get_timestamp(),
+                    message.as_ref()
+                ),
+            }
         }
     }
 
@@ -40,19 +48,8 @@ impl Logger {
         }
     }
 
-    pub fn log_with_prefix<S: AsRef<str>>(&self, prefix: S, message: S) {
-        if self.enabled {
-            println!(
-                "[{}] {}{:?}",
-                prefix.as_ref(),
-                Logger::get_timestamp(),
-                message.as_ref()
-            );
-        }
-    }
-
-    pub fn enable() -> Logger {
+    pub fn enable(prefix: Option<&'static str>) -> Logger {
         env::set_var(LOGGER_STATUS_VARIABLE_NAME, LOGGER_ENABLED);
-        Logger::new()
+        Logger::new(prefix)
     }
 }

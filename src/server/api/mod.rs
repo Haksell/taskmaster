@@ -18,7 +18,7 @@ pub struct Responder<'a> {
 
 impl<'a> Responder<'a> {
     fn bind_listener() -> UnixListener {
-        let logger = Logger::new();
+        let logger = Logger::new(Some("Responder"));
         return match UnixListener::bind(UNIX_DOMAIN_SOCKET_PATH) {
             Ok(stream) => {
                 logger.log(format!(
@@ -45,24 +45,25 @@ impl<'a> Responder<'a> {
     }
 
     fn handle_message(&mut self, received_data: Cow<str>) {
-        let logger = Logger::new();
-        logger.log(format!("Received via socket: {received_data}"));
+        self.logger
+            .log(format!("Received via socket: {received_data}"));
 
         match serde_json::from_str::<Action>(received_data.to_string().as_str()) {
             Ok(action) => {
                 let answer = self.monitor.answer(action);
                 self.write_message(&answer);
-                logger.log(format!("Sending the answer: \"{answer}\""));
+                self.logger.log(format!("Sending the answer: \"{answer}\""));
             }
             Err(error) => {
-                logger.log(format!("Unknown action: {received_data}: {error}"));
+                self.logger
+                    .log(format!("Unknown action: {received_data}: {error}"));
                 self.write_message(&"Error, unknown action".to_string());
             }
         }
     }
 
     pub fn listen(monitor: &mut Monitor) {
-        let logger = Logger::new();
+        let logger = Logger::new(Some("Responder"));
         for stream in Responder::bind_listener().incoming() {
             match stream {
                 Ok(stream) => {

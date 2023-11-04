@@ -1,20 +1,20 @@
-task_exit_code:
-  cmd: "cat -noexist"
+task2:
+  cmd: "ls -la"
   num_procs: 3
   umask: 777
-  auto_start: false
+  auto_start: true
   auto_restart: unexpected
   exit_codes:
     - 0
     - 2
   start_retries: 3
-  start_time: 5
+  start_time: 0
   stop_signal: USR1
-  stop_time: 10
+  stop_time: 0
   stdout: /tmp/task2.stdout
   stderr: /tmp/task2.stderr
 task3:
-  cmd: "ls -lah"
+  cmd: "/Users/amyroshn/Documents/rustmaster/scripts/echo_answer_inf_loop.sh"
   num_procs: 5
   umask: 777
   auto_start: true

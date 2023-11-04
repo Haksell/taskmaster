@@ -1,10 +1,10 @@
 mod actions_tmp;
 
+use crate::actions_tmp::Action;
+use crate::actions_tmp::Action::Exit;
 use std::io::stdin;
 use std::io::{stdout, Read, Write};
 use std::os::unix::net::UnixStream;
-use crate::actions_tmp::Action;
-use crate::actions_tmp::Action::Exit;
 
 //TODO: clean up, handle errors
 fn main() {
@@ -27,7 +27,7 @@ fn main() {
 
         let trimmed = buffer.trim();
 
-        match Action::from(trimmed) {
+        match Action::_from(trimmed) {
             Ok(action) => {
                 let serialized_action =
                     serde_json::to_string(&action).expect("Serialization failed");

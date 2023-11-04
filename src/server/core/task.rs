@@ -1,9 +1,9 @@
-use crate::core::configuration::State::{FATAL, REGISTERED, STARTING, STOPPED};
+use crate::core::configuration::State::*;
 use crate::core::configuration::{Configuration, State};
 use std::fmt::{Display, Formatter};
 use std::fs::{File, OpenOptions};
 use std::process::{Child, Command, Stdio};
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
 
 //TODO: Validation of stdout/stderr files path
 //TODO: Check existing of working dir
@@ -14,8 +14,6 @@ pub struct Task {
     _restarts_left: u32,
     pub(crate) child: Option<Child>,
     pub(crate) exit_code: Option<i32>,
-    started_at: Option<SystemTime>,
-    last_error: Option<String>,
 }
 
 impl Task {
@@ -23,11 +21,9 @@ impl Task {
         Task {
             _restarts_left: configuration.start_retries,
             configuration: configuration.clone(),
-            state: REGISTERED,
+            state: STOPPED(None),
             exit_code: None,
             child: None,
-            started_at: None,
-            last_error: None,
         }
     }
 
@@ -62,27 +58,24 @@ impl Task {
         {
             Ok(child) => {
                 self.child = Some(child);
-                self.state = STARTING;
-                self.started_at = Some(SystemTime::now());
+                self.state = RUNNING(SystemTime::now());
                 Ok(())
             }
             Err(err) => {
-                self.last_error = Some(err.to_string());
-                self.state = FATAL;
+                self.state = FATAL(err.to_string());
                 Err(err.to_string())
             }
         }
     }
 
     pub fn run(&mut self) -> Result<(), String> {
+        self.state = STARTING;
         let stderr = self.setup_stream(&self.configuration.stderr).map_err(|e| {
-            self.state = FATAL;
-            self.last_error = Some(e.to_string());
+            self.state = FATAL(e.to_string());
             e
         })?;
         let stdout = self.setup_stream(&self.configuration.stdout).map_err(|e| {
-            self.state = FATAL;
-            self.last_error = Some(e.to_string());
+            self.state = FATAL(e.to_string());
             e
         })?;
 
@@ -91,7 +84,7 @@ impl Task {
         Ok(())
     }
 
-    pub fn stop(&mut self) -> Result<(), String> {
+    pub fn kill(&mut self) -> Result<(), String> {
         return match &mut self.child {
             None => Err(format!(
                 "Can't find child process, probably was already stopped or not stared"
@@ -100,7 +93,31 @@ impl Task {
                 if let Err(error) = child.kill() {
                     return Err(format!("Can't kill child process, {error}"));
                 }
-                self.state = STOPPED;
+                self.state = STOPPED(Some(SystemTime::now()));
+                self.child = None;
+                Ok(())
+            }
+        };
+    }
+
+    //TODO: finish that to send good signal
+    pub fn _stop(&mut self) -> Result<(), String> {
+        return match &mut self.child {
+            None => Err(format!(
+                "Can't find child process, probably was already stopped or not stared"
+            )),
+            Some(child) => {
+                let _kill = Command::new("kill")
+                    .args([
+                        "-s",
+                        &self.configuration.stop_signal.to_string(),
+                        &child.id().to_string(),
+                    ])
+                    .spawn();
+                if let Err(error) = child.kill() {
+                    return Err(format!("Can't kill child process, {error}"));
+                }
+                self.state = STOPPED(Some(SystemTime::now()));
                 self.child = None;
                 Ok(())
             }
@@ -110,10 +127,47 @@ impl Task {
     pub fn get_json_configuration(&self) -> String {
         serde_json::to_string_pretty(&self.configuration).expect("Serialization failed")
     }
+
+    fn is_exited_too_quickly(&self, started_at: SystemTime) -> bool {
+        let current_time = SystemTime::now();
+        let elapsed_time = current_time
+            .duration_since(started_at)
+            .unwrap_or(Duration::from_secs(0));
+        elapsed_time.as_secs() < self.configuration.start_time
+    }
+
+    pub fn set_finished(&mut self, exit_code: Option<i32>) {
+        let old_state = self.state.clone();
+        self.state = FINISHED;
+        if let RUNNING(started_time) = old_state {
+            if self.is_exited_too_quickly(started_time) {
+                self.state = BACKOFF;
+            }
+        }
+        self.exit_code = exit_code;
+        self.child = None;
+    }
 }
 
 impl Display for Task {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.state)
+        let mut result = self.state.to_string();
+        match self.state {
+            FINISHED => {}
+            STOPPED(_) => {}
+            STARTING => {}
+            RUNNING(_) => {
+                let pid = match self.child.as_ref() {
+                    None => 0,
+                    Some(child) => child.id(),
+                };
+                result += &format!("\t\tPID {}", pid)
+            }
+            BACKOFF => result += "\tExited too quickly",
+            _EXITED => {}
+            FATAL(_) => {}
+            _UNKNOWN => {}
+        };
+        write!(f, "{result}")
     }
 }

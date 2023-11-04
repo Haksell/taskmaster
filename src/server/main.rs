@@ -43,17 +43,16 @@ unsafe fn parse_arguments() {
 
 fn run_program(monitor: &mut Monitor) {
     monitor.track();
-    monitor.run_autostart();
     Responder::listen(monitor);
 }
 
 fn main() {
-    let mut logger = Logger::new();
+    let mut logger = Logger::new(None);
     let mut monitor: Monitor;
     unsafe {
         parse_arguments();
         if IS_DISABLED_DEMONIZE {
-            logger = Logger::enable();
+            logger = Logger::enable(None);
             logger.log("The logging was enabled")
         }
         monitor = Monitor::new();
@@ -63,7 +62,9 @@ fn main() {
                 file_name
             ));
             match Configuration::from_yml(String::from(file_name)) {
-                Ok(conf) => monitor.load_configuration(conf),
+                Ok(conf) => {
+                    monitor.update_configuration(conf);
+                }
                 Err(err_msg) => {
                     logger.log_err(err_msg);
                     exit(2);
