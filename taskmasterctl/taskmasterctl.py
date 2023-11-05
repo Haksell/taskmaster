@@ -1,5 +1,4 @@
 # TODO: parse action.rs to avoid code duplication
-# TODO: launch without CLI
 
 import cmd
 from enum import Enum
@@ -20,6 +19,9 @@ BOLD = "\033[1m"
 RED = "\033[91m"
 GREEN = "\033[92m"
 CYAN = "\033[96m"
+
+PROMPT_START_IGNORE = "\001"
+PROMPT_END_IGNORE = "\002"
 
 
 class Argument(Enum):
@@ -58,8 +60,7 @@ def send_to_socket(message):
                 if not part:
                     break
                 response_parts.append(part)
-            response = b"".join(response_parts)
-            response = response.decode().rstrip()
+            response = b"".join(response_parts).decode().rstrip()
             if response:
                 print(response)
             elif message == "Shutdown":
@@ -68,7 +69,7 @@ def send_to_socket(message):
         print_error(f"Unknown error: {e}")
 
 
-def process(arg, expected_argument):
+def process_cmd(arg, expected_argument):
     current_frame = inspect.currentframe()
     calling_frame = current_frame.f_back
     method_name = calling_frame.f_code.co_name
@@ -118,8 +119,7 @@ def input_swallowing_interrupt(_input):
 
 
 class TaskMasterShell(cmd.Cmd):
-    # prompt = f"{BOLD}{CYAN}taskmaster>{RESET} "
-    prompt = f"taskmaster> "
+    prompt = f"{PROMPT_START_IGNORE}{BOLD}{CYAN}{PROMPT_END_IGNORE}taskmaster>{PROMPT_START_IGNORE}{RESET}{PROMPT_END_IGNORE} "
 
     def cmdloop(self, *args, **kwargs):
         old_input_fn = cmd.__builtins__["input"]
@@ -128,14 +128,12 @@ class TaskMasterShell(cmd.Cmd):
             super().cmdloop(*args, **kwargs)
         finally:
             cmd.__builtins__["input"] = old_input_fn
-        try:
-            self.old_completer = readline.get_completer()
-            readline.set_completer(self.complete)
-            readline.parse_and_bind(self.completekey + ": complete")
-            old_delims = readline.get_completer_delims()
-            readline.set_completer_delims(old_delims.replace("-", ""))
-        except ImportError:
-            pass
+
+        self.old_completer = readline.get_completer()
+        readline.set_completer(self.complete)
+        readline.parse_and_bind(self.completekey + ": complete")
+        old_delims = readline.get_completer_delims()
+        readline.set_completer_delims(old_delims.replace("-", ""))
 
     def emptyline(self):
         pass
@@ -154,28 +152,28 @@ class TaskMasterShell(cmd.Cmd):
     do_quit = do_exit
 
     def do_config(self, arg):
-        """config <name> : Get the task configuration in json"""
-        process(arg, Argument.ONE)
+        """config <name>: Get the task configuration in json"""
+        process_cmd(arg, Argument.ONE)
 
     def do_shutdown(self, arg):
         """shutdown: Shut the remote taskmasterd down."""
-        process(arg, Argument.ZERO)
+        process_cmd(arg, Argument.ZERO)
 
     def do_start(self, arg):
-        """start <name> : Start a process"""
-        process(arg, Argument.ONE)
+        """start <name>: Start a process"""
+        process_cmd(arg, Argument.ONE)
 
     def do_stop(self, arg):
-        """stop <name> : Stop a process"""
-        process(arg, Argument.ONE)
+        """stop <name>: Stop a process"""
+        process_cmd(arg, Argument.ONE)
 
     def do_status(self, arg):
-        "status        : Get all process status info\nstatus <name> : Get status for a single process"
-        process(arg, Argument.OPTIONAL)
+        "status       : Get all process status info\nstatus <name>: Get status for a single process"
+        process_cmd(arg, Argument.OPTIONAL)
 
     def do_update(self, arg):
-        """update <filename> : Reload the config file and add/remove tasks as necessary"""
-        process(arg, Argument.ONE)
+        """update <filename>: Reload the config file and add/remove tasks as necessary"""
+        process_cmd(arg, Argument.ONE)
 
     def complete_update(self, text, line, *_):
         mline = line.partition(" ")[2]
@@ -188,6 +186,6 @@ if __name__ == "__main__":
     top_line = INTRO_CHAR * width
     middle_line = "  WELCOME TO TASKMASTER  ".center(width, INTRO_CHAR)
     TaskMasterShell().cmdloop(
-        f"\n{BOLD}{GREEN}{top_line}\n{middle_line}\n{top_line}{RESET}\n"
+        f"{BOLD}{GREEN}{top_line}\n{middle_line}\n{top_line}{RESET}"
     )
     print("Goodbye.")
