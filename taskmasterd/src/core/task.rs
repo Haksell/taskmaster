@@ -71,12 +71,10 @@ impl Task {
     pub fn run(&mut self) -> Result<(), String> {
         self.state = STARTING;
         let stderr = self.setup_stream(&self.configuration.stderr).map_err(|e| {
-            println!("SSS");
             self.state = FATAL(e.to_string());
             e
         })?;
         let stdout = self.setup_stream(&self.configuration.stdout).map_err(|e| {
-            println!("SSS222");
             self.state = FATAL(e.to_string());
             e
         })?;
