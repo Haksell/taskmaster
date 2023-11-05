@@ -73,10 +73,10 @@ impl Monitor {
                         let process_lines: Vec<String> = task
                             .iter()
                             .enumerate()
-                            .map(|(position, process)| format!("\n\t\t{}. {process}", position + 1))
+                            .map(|(position, process)| format!("\n\t{}. {process}", position + 1))
                             .collect();
                         format!(
-                            "\t{name}:\t\t{}\t",
+                            "{name}:\t\t{}\t",
                             if task.len() == 1 {
                                 task[0].to_string()
                             } else {

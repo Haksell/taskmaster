@@ -22,7 +22,7 @@ def send_to_socket(message):
             s.connect("/tmp/.unixdomain.sock")
             s.sendall(message.encode())
             response = s.recv(1024)  # TODO: receive all
-            response = response.decode().strip()
+            response = response.decode().rstrip()
             if response:
                 print(response)
     except Exception as e:
