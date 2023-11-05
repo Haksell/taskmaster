@@ -2,14 +2,17 @@
 # TODO: launch without CLI
 
 import cmd
+from enum import Enum
 import glob
+import inspect
 import json
+import os
 import socket
 import readline
 import sys
 
 BUFFER_SIZE = 1024
-
+INTRO_CHAR = "="
 UNIX_DOMAIN_SOCKET = "/tmp/.unixdomain.sock"
 
 RESET = "\033[0m"
@@ -17,6 +20,12 @@ BOLD = "\033[1m"
 RED = "\033[91m"
 GREEN = "\033[92m"
 CYAN = "\033[96m"
+
+
+class Argument(Enum):
+    ZERO = "no"
+    OPTIONAL = "zero or one"
+    ONE = "one"
 
 
 def print_error(s):
@@ -59,6 +68,44 @@ def send_to_socket(message):
         print_error(f"Unknown error: {e}")
 
 
+def process(arg, expected_argument):
+    current_frame = inspect.currentframe()
+    calling_frame = current_frame.f_back
+    method_name = calling_frame.f_code.co_name
+    argc = len(arg.split())
+    if (
+        expected_argument == Argument.ZERO
+        and argc == 0
+        or expected_argument == Argument.OPTIONAL
+        and argc <= 1
+        or expected_argument == Argument.ONE
+        and argc == 1
+    ):
+        command = method_name[3:].title()
+        message = json.dumps(
+            command
+            if expected_argument == Argument.ZERO
+            else {command: arg or None}
+            if expected_argument == Argument.OPTIONAL
+            else {command: arg}
+        )
+        send_to_socket(message)
+    else:
+        print_error(f"{method_name[3:]} requires {expected_argument.value} argument")
+        class_name = (
+            calling_frame.f_locals.get("self", None).__class__.__name__
+            if "self" in calling_frame.f_locals
+            else None
+        )
+        if class_name:
+            method = getattr(
+                eval(class_name, calling_frame.f_globals), method_name, None
+            )
+        else:
+            method = calling_frame.f_globals.get(method_name)
+        print(inspect.getdoc(method))
+
+
 def input_swallowing_interrupt(_input):
     def _input_swallowing_interrupt(*args):
         try:
@@ -71,11 +118,8 @@ def input_swallowing_interrupt(_input):
 
 
 class TaskMasterShell(cmd.Cmd):
-    intro = f"""{BOLD}{GREEN}\
-=============================
-=== WELCOME TO TASKMASTER ===
-============================={RESET}"""
-    prompt = f"{BOLD}{CYAN}taskmaster>{RESET} "
+    # prompt = f"{BOLD}{CYAN}taskmaster>{RESET} "
+    prompt = f"taskmaster> "
 
     def cmdloop(self, *args, **kwargs):
         old_input_fn = cmd.__builtins__["input"]
@@ -84,7 +128,6 @@ class TaskMasterShell(cmd.Cmd):
             super().cmdloop(*args, **kwargs)
         finally:
             cmd.__builtins__["input"] = old_input_fn
-
         try:
             self.old_completer = readline.get_completer()
             readline.set_completer(self.complete)
@@ -105,39 +148,46 @@ class TaskMasterShell(cmd.Cmd):
             print(f"{arg.split()[0]}: command not found")
 
     def do_exit(self, arg):
-        """exit : Exit the taskmaster shell"""
+        """exit: Exit the taskmaster shell"""
         return True
+
+    do_quit = do_exit
 
     def do_config(self, arg):
         """config <name> : Get the task configuration in json"""
-        send_to_socket(json.dumps({"Config": arg}))
+        process(arg, Argument.ONE)
 
     def do_shutdown(self, arg):
-        """shutdown : Shut the remote taskmasterd down."""
-        send_to_socket(json.dumps("Shutdown"))
+        """shutdown: Shut the remote taskmasterd down."""
+        process(arg, Argument.ZERO)
 
     def do_start(self, arg):
         """start <name> : Start a process"""
-        send_to_socket(json.dumps({"Start": arg}))
+        process(arg, Argument.ONE)
 
     def do_stop(self, arg):
         """stop <name> : Stop a process"""
-        send_to_socket(json.dumps({"Stop": arg}))
+        process(arg, Argument.ONE)
 
     def do_status(self, arg):
         "status        : Get all process status info\nstatus <name> : Get status for a single process"
-        send_to_socket(json.dumps({"Status": arg or None}))
+        process(arg, Argument.OPTIONAL)
 
     def do_update(self, arg):
         """update <filename> : Reload the config file and add/remove tasks as necessary"""
-        send_to_socket(json.dumps({"Update": arg}))
+        process(arg, Argument.ONE)
 
-    def complete_update(self, text, line, start_index, end_index):
+    def complete_update(self, text, line, *_):
         mline = line.partition(" ")[2]
         offs = len(mline) - len(text)
         return [fp[offs:] for fp in glob.glob(mline + "*")]
 
 
 if __name__ == "__main__":
-    TaskMasterShell().cmdloop()
+    width = os.get_terminal_size().columns
+    top_line = INTRO_CHAR * width
+    middle_line = "  WELCOME TO TASKMASTER  ".center(width, INTRO_CHAR)
+    TaskMasterShell().cmdloop(
+        f"\n{BOLD}{GREEN}{top_line}\n{middle_line}\n{top_line}{RESET}\n"
+    )
     print("Goodbye.")
