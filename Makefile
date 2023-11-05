@@ -21,18 +21,18 @@ vagrant:
 
 server:
 	$(call rm,$(SOCKET))
-	sudo cargo run --bin server
+	sudo cargo run --manifest-path taskmasterd/Cargo.toml
 
 debug:
 	$(call rm,$(SOCKET))
-	sudo cargo run --bin server -- --debug
+	sudo cargo run --manifest-path taskmasterd/Cargo.toml -- --debug
 
 stop:
 	-@sudo kill -TERM $$(sudo cat $(PID_FILE))
 	$(call rm,$(PID_FILE))
 
 client:
-	sudo cargo run --bin client
+	sudo python3 taskmasterctl/taskmasterctl.py
 
 clean:  stop
 	$(call sudo,rm,$(SOCKET))

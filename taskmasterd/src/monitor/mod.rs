@@ -210,12 +210,11 @@ impl Monitor {
     pub fn answer(&mut self, action: Action) -> String {
         match action {
             Action::Status(status) => self.get_task_status(status),
-            Action::Help => action.get_description(),
             Action::Config(task_name) => match self.get_task_json_config_by_name(&task_name) {
                 None => format!("Can't find \"{task_name}\" task"),
                 Some(task) => format!("{task_name}: {task}"),
             },
-            Action::Exit => exit(0),
+            Action::Shutdown => exit(0),
             Action::Start(task_name) => match self.start_task_by_name(&task_name) {
                 Ok(_) => String::new(),
                 Err(err_msg) => err_msg,

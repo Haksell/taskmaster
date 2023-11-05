@@ -1,4 +1,4 @@
-task2:
+task6:
   cmd: "ls -la"
   num_procs: 3
   umask: 777
@@ -14,7 +14,7 @@ task2:
   stdout: /tmp/task2.stdout
   stderr: /tmp/task2.stderr
 task3:
-  cmd: "/Users/amyroshn/Documents/rustmaster/scripts/echo_answer_inf_loop.sh"
+  cmd: "/vagrant/scripts/echo_answer_inf_loop.sh"
   num_procs: 5
   umask: 777
   auto_start: true

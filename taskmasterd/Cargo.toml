@@ -3,15 +3,6 @@ name = "taskmaster"
 version = "0.1.0"
 edition = "2021"
 
-[[bin]]
-name = "server"
-path = "src/server/main.rs"
-
-[[bin]]
-name = "client"
-path = "src/client/main.rs"
-
-
 [dependencies]
 serde_yaml = "0.9.25"
 serde = { version = "1.0.189", features = ["derive"] }
