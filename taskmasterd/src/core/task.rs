@@ -1,7 +1,9 @@
+extern crate libc;
 use crate::core::configuration::State::*;
 use crate::core::configuration::{Configuration, State};
 use std::fmt::{Display, Formatter};
 use std::fs::{File, OpenOptions};
+use std::os::unix::process::CommandExt;
 use std::process::{Child, Command, Stdio};
 use std::time::{Duration, SystemTime};
 
@@ -42,9 +44,9 @@ impl Task {
         }
     }
 
-    fn setup_child_process(&mut self, stderr: Stdio, stdout: Stdio) -> Result<(), String> {
+    unsafe fn setup_child_process(&mut self, stderr: Stdio, stdout: Stdio) -> Result<(), String> {
         let argv: Vec<_> = self.configuration.cmd.split_whitespace().collect();
-
+        let umask_val = self.configuration.umask;
         match Command::new(argv[0])
             .args(&argv[1..])
             .current_dir(match &self.configuration.working_dir {
@@ -54,6 +56,12 @@ impl Task {
             .envs(&self.configuration.env)
             .stdout(stdout)
             .stderr(stderr)
+            .pre_exec(move || {
+                unsafe {
+                    libc::umask(umask_val);
+                }
+                Ok(())
+            })
             .spawn()
         {
             Ok(child) => {
@@ -71,17 +79,17 @@ impl Task {
     pub fn run(&mut self) -> Result<(), String> {
         self.state = STARTING;
         let stderr = self.setup_stream(&self.configuration.stderr).map_err(|e| {
-            println!("SSS");
             self.state = FATAL(e.to_string());
             e
         })?;
         let stdout = self.setup_stream(&self.configuration.stdout).map_err(|e| {
-            println!("SSS222");
             self.state = FATAL(e.to_string());
             e
         })?;
 
-        self.setup_child_process(stderr, stdout)?;
+        unsafe {
+            self.setup_child_process(stderr, stdout)?;
+        }
 
         Ok(())
     }

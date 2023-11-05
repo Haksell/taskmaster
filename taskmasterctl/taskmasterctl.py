@@ -1,32 +1,62 @@
-# TODO: empty line
+# TODO: parse action.rs to avoid code duplication
+# TODO: launch without CLI
 
 import cmd
 import glob
 import json
 import socket
 import readline
+import sys
 
-HEADER = "\033[95m"
-BLUE = "\033[94m"
-CYAN = "\033[96m"
-GREEN = "\033[92m"
-YELLOW = "\033[93m"
-RED = "\033[91m"
+BUFFER_SIZE = 1024
+
+UNIX_DOMAIN_SOCKET = "/tmp/.unixdomain.sock"
+
 RESET = "\033[0m"
 BOLD = "\033[1m"
+RED = "\033[91m"
+GREEN = "\033[92m"
+CYAN = "\033[96m"
+
+
+def print_error(s):
+    print(f"{RED}{s}{RESET}", file=sys.stderr)
 
 
 def send_to_socket(message):
     try:
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
-            s.connect("/tmp/.unixdomain.sock")
-            s.sendall(message.encode())
-            response = s.recv(1024)  # TODO: receive all
+            try:
+                s.connect(UNIX_DOMAIN_SOCKET)
+            except FileNotFoundError:
+                print_error(f"Socket {UNIX_DOMAIN_SOCKET} not found")
+                return
+            except Exception as e:
+                print_error(f"Failed to connect to taskmasterd: {e}")
+                return
+            try:
+                s.sendall(message.encode())
+            except Exception as e:
+                print_error(f"Failed to write to taskmasterd: {e}")
+                return
+            response_parts = []
+            while True:
+                try:
+                    part = s.recv(BUFFER_SIZE)
+                except Exception as e:
+                    print_error(f"Failed to read from taskmasterd: {e}")
+                    return
+                if not part:
+                    break
+                response_parts.append(part)
+            response = b"".join(response_parts)
             response = response.decode().rstrip()
             if response:
                 print(response)
+            elif message == "Shutdown":
+                print("Shutdown successful")
     except Exception as e:
-        print(f"{RED}{e}{RESET}")
+        print_error(f"Unknown error: {e}")
 
 
 def input_swallowing_interrupt(_input):
@@ -72,7 +102,7 @@ class TaskMasterShell(cmd.Cmd):
             print()
             return True
         else:
-            print(f"{arg}: command not found")
+            print(f"{arg.split()[0]}: command not found")
 
     def do_exit(self, arg):
         """exit : Exit the taskmaster shell"""
@@ -100,7 +130,6 @@ class TaskMasterShell(cmd.Cmd):
 
     def do_update(self, arg):
         """update <filename> : Reload the config file and add/remove tasks as necessary"""
-        print(arg)
         send_to_socket(json.dumps({"Update": arg}))
 
     def complete_update(self, text, line, start_index, end_index):

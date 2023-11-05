@@ -1,4 +1,4 @@
-target
+taskmasterd/target
 .vagrant
 *.sock
 .idea

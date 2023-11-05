@@ -245,6 +245,7 @@ name = "taskmaster"
 version = "0.1.0"
 dependencies = [
  "daemonize",
+ "libc",
  "regex",
  "serde",
  "serde_json",

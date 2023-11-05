@@ -105,7 +105,7 @@ pub struct Configuration {
     pub(crate) num_procs: u32,
     #[serde(deserialize_with = "deserialize_umask")]
     #[validate(custom = "validate_umask")]
-    umask: u32,
+    pub(crate) umask: u32,
     #[serde(deserialize_with = "deserialize_option_string_and_trim")]
     pub(crate) working_dir: Option<String>,
     pub(crate) auto_start: bool,

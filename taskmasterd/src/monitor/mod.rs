@@ -196,7 +196,7 @@ impl Monitor {
                         } else {
                             if process.configuration.auto_start && process.state == STOPPED(None) {
                                 logger.log(format!("Auto starting {name} #{}", i + 1));
-                                let _ = process.run();
+                                let _ = process.run(); // TODO: handle error
                             }
                         }
                     }
