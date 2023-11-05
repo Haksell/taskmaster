@@ -66,7 +66,6 @@ impl Task {
         {
             Ok(child) => {
                 self.child = Some(child);
-                self.state = RUNNING(SystemTime::now());
                 Ok(())
             }
             Err(err) => {

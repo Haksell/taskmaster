@@ -1,6 +1,6 @@
 use crate::api::action::Action;
-use crate::core::configuration::Configuration;
 use crate::core::configuration::State::{BACKOFF, STOPPED};
+use crate::core::configuration::{AutoRestart, Configuration};
 use crate::core::logger::Logger;
 use crate::core::task::Task;
 use std::collections::btree_map::Entry;
@@ -175,8 +175,8 @@ impl Monitor {
                 let mut tasks = monitor_clone.lock().unwrap();
                 for (name, task) in tasks.iter_mut() {
                     for (i, process) in task.iter_mut().enumerate() {
-                        if let Some(child) = &mut process.child {
-                            match child.try_wait() {
+                        match &mut process.child {
+                            Some(child) => match child.try_wait() {
                                 Ok(Some(status)) => {
                                     logger.log(format!(
                                         "{name} #{} exited with status {:?}",
@@ -188,15 +188,26 @@ impl Monitor {
                                         logger.log(format!("{name} #{} stopped to quick", i + 1,));
                                     }
                                 }
-                                Ok(None) => {}
+                                Ok(None) => {
+                                    println!("Not finished yet")
+                                }
                                 Err(e) => {
                                     logger.log_err(format!("Error attempting to wait: {:?}", e))
                                 }
-                            }
-                        } else {
-                            if process.configuration.auto_start && process.state == STOPPED(None) {
-                                logger.log(format!("Auto starting {name} #{}", i + 1));
-                                let _ = process.run(); // TODO: handle error
+                            },
+                            None => {
+                                if process.configuration.auto_start
+                                    && process.state == STOPPED(None)
+                                {
+                                    logger.log(format!("Auto starting {name} #{}", i + 1));
+                                    let _ = process.run(); // TODO: handle error
+                                } else if process.configuration.auto_restart != AutoRestart::False {
+                                    match process.configuration.auto_restart {
+                                        AutoRestart::True => {}
+                                        AutoRestart::False => {}
+                                        AutoRestart::Unexpected => {}
+                                    }
+                                }
                             }
                         }
                     }

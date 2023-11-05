@@ -109,7 +109,7 @@ pub struct Configuration {
     #[serde(deserialize_with = "deserialize_option_string_and_trim")]
     pub(crate) working_dir: Option<String>,
     pub(crate) auto_start: bool,
-    auto_restart: AutoRestart,
+    pub(crate) auto_restart: AutoRestart,
     exit_codes: Vec<i32>,
     pub start_retries: u32, //make immutable (e.g. getters?)
     pub(crate) start_time: u64,
