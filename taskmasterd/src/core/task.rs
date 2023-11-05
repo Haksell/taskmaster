@@ -1,6 +1,7 @@
 extern crate libc;
 use crate::core::configuration::State::*;
 use crate::core::configuration::{Configuration, State};
+use libc::mode_t;
 use std::fmt::{Display, Formatter};
 use std::fs::{File, OpenOptions};
 use std::os::unix::process::CommandExt;
@@ -46,7 +47,7 @@ impl Task {
 
     unsafe fn setup_child_process(&mut self, stderr: Stdio, stdout: Stdio) -> Result<(), String> {
         let argv: Vec<_> = self.configuration.cmd.split_whitespace().collect();
-        let umask_val = self.configuration.umask;
+        let umask_val = self.configuration.umask as mode_t;
         match Command::new(argv[0])
             .args(&argv[1..])
             .current_dir(match &self.configuration.working_dir {
