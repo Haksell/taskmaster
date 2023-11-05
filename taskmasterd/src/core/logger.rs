@@ -1,10 +1,6 @@
-use std::env;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-const LOGGER_STATUS_VARIABLE_NAME: &'static str = "RUST_LOGGER_ENABLED";
-const LOGGER_ENABLED: &'static str = "1";
 pub struct Logger {
-    enabled: bool,
     prefix: Option<&'static str>,
 }
 
@@ -20,15 +16,10 @@ impl Logger {
     }
 
     pub fn new(prefix: Option<&'static str>) -> Self {
-        let enabled = env::var(LOGGER_STATUS_VARIABLE_NAME)
-            .ok()
-            .map(|s| s == LOGGER_ENABLED)
-            .unwrap_or(false);
-        Logger { enabled, prefix }
+        Logger { prefix }
     }
 
     pub fn log<S: AsRef<str>>(&self, message: S) {
-        if self.enabled {
             match self.prefix.as_ref() {
                 None => println!("{}{:?}", Logger::get_timestamp(), message.as_ref()),
                 Some(prefix) => println!(
@@ -36,20 +27,10 @@ impl Logger {
                     Logger::get_timestamp(),
                     message.as_ref()
                 ),
-            }
         }
     }
 
-    pub fn log_err<S: AsRef<str>>(&self, message: S) {
-        if self.enabled {
-            println!("{}{:?}", Logger::get_timestamp(), message.as_ref());
-        } else {
-            eprintln!("{}", message.as_ref())
-        }
-    }
-
-    pub fn enable(prefix: Option<&'static str>) -> Logger {
-        env::set_var(LOGGER_STATUS_VARIABLE_NAME, LOGGER_ENABLED);
-        Logger::new(prefix)
+    pub fn log_err<S: AsRef<str>>(&self, message: S) { 
+        eprintln!("{}", message.as_ref())
     }
 }

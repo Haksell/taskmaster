@@ -10,13 +10,12 @@ use daemonize::Daemonize;
 use std::env;
 use std::process::exit;
 
-static mut CONFIG_FILE_NAME: Option<String> = None;
-static mut IS_DISABLED_DEMONIZE: bool = false;
 const HELP_MESSAGE: &str = "Options are:\n\t--help: Show help info\
     \n\t--debug: Disables daemon mode and shows logs\
     \n\t<path_to_config_file>: Starts server with a configuration";
 
-unsafe fn parse_arguments() {
+fn parse_arguments() -> (bool, Option<String>) {
+    let mut result = (false, None);
     let args: Vec<String> = env::args().skip(1).collect();
     for arg in args {
         match arg.as_str() {
@@ -24,14 +23,14 @@ unsafe fn parse_arguments() {
                 eprintln!("{}", HELP_MESSAGE);
                 exit(2);
             }
-            "--debug" => IS_DISABLED_DEMONIZE = true,
+            "--debug" => result.0 = true,
             _ => {
-                if CONFIG_FILE_NAME.is_none() {
-                    CONFIG_FILE_NAME = Some(arg.clone());
+                if result.1.is_none() {
+                    result.1 = Some(arg.clone());
                 } else {
                     eprintln!(
                         "Error: Config file path is already defined: {}. What is {}?",
-                        CONFIG_FILE_NAME.clone().unwrap(),
+                        result.1.unwrap(),
                         arg
                     );
                     exit(1);
@@ -39,6 +38,7 @@ unsafe fn parse_arguments() {
             }
         }
     }
+    result
 }
 
 fn run_program(monitor: &mut Monitor) {
@@ -47,31 +47,24 @@ fn run_program(monitor: &mut Monitor) {
 }
 
 fn main() {
-    let mut logger = Logger::new(None);
+    let logger = Logger::new(None);
     let mut monitor: Monitor;
-    unsafe {
-        parse_arguments();
-        if IS_DISABLED_DEMONIZE {
-            logger = Logger::enable(None);
-            logger.log("The logging was enabled")
-        }
-        monitor = Monitor::new();
-        if let Some(file_name) = CONFIG_FILE_NAME.clone() {
-            logger.log(format!(
-                "Configuration file [{}] was provided on start",
-                file_name
-            ));
-            match Configuration::from_yml(String::from(file_name)) {
-                Ok(conf) => {
-                    monitor.update_configuration(conf);
-                }
-                Err(err_msg) => {
-                    logger.log_err(err_msg);
-                    exit(2);
-                }
+    let parsed_args = parse_arguments();
+    let is_disabled_demonize = parsed_args.0;
+    let config_file_name = parsed_args.1;
+    if is_disabled_demonize {
+        logger.log("The logging was enabled")
+    }
+    monitor = Monitor::new();
+    if let Some(file_name) = config_file_name {
+        match Configuration::from_yml(String::from(file_name)) {
+            Ok(conf) => {
+                monitor.update_configuration(conf);
             }
-        } else {
-            logger.log("No configuration file was provided")
+            Err(err_msg) => {
+                logger.log_err(err_msg);
+                exit(2);
+            }
         }
     }
 
@@ -79,18 +72,12 @@ fn main() {
         .pid_file("/var/run/server.pid")
         .chown_pid_file(true)
         .working_directory(".");
-    unsafe {
-        if IS_DISABLED_DEMONIZE {
-            run_program(&mut monitor);
-        } else {
-            match daemon.start() {
-                Ok(_) => {
-                    run_program(&mut monitor);
-                }
-                Err(e) => {
-                    eprintln!("Can't daemonize {e}. Already launched or check sudo")
-                }
-            }
+    if is_disabled_demonize {
+        run_program(&mut monitor);
+    } else {
+        match daemon.start() {
+            Ok(_) => run_program(&mut monitor),
+            Err(e) => eprintln!("Can't daemonize {e}. Already launched or check sudo"),
         }
     }
 }
