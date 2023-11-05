@@ -32,7 +32,7 @@ stop:
 	$(call rm,$(PID_FILE))
 
 client:
-	sudo python3 taskmasterctl/taskmasterctl.py
+	@sudo python3 taskmasterctl/taskmasterctl.py
 
 clean:  stop
 	$(call sudo,rm,$(SOCKET))
