@@ -1,4 +1,5 @@
 # TODO: parse action.rs to avoid code duplication
+# TODO: launch without CLI
 
 import cmd
 import glob
