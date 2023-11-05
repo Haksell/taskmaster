@@ -130,7 +130,6 @@ class TaskMasterShell(cmd.Cmd):
 
     def do_update(self, arg):
         """update <filename> : Reload the config file and add/remove tasks as necessary"""
-        print(arg)
         send_to_socket(json.dumps({"Update": arg}))
 
     def complete_update(self, text, line, start_index, end_index):
