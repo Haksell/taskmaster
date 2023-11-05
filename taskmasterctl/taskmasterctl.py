@@ -69,7 +69,7 @@ def send_to_socket(message):
         print_error(f"Unknown error: {e}")
 
 
-def process(arg, expected_argument):
+def process_cmd(arg, expected_argument):
     current_frame = inspect.currentframe()
     calling_frame = current_frame.f_back
     method_name = calling_frame.f_code.co_name
@@ -153,27 +153,27 @@ class TaskMasterShell(cmd.Cmd):
 
     def do_config(self, arg):
         """config <name>: Get the task configuration in json"""
-        process(arg, Argument.ONE)
+        process_cmd(arg, Argument.ONE)
 
     def do_shutdown(self, arg):
         """shutdown: Shut the remote taskmasterd down."""
-        process(arg, Argument.ZERO)
+        process_cmd(arg, Argument.ZERO)
 
     def do_start(self, arg):
         """start <name>: Start a process"""
-        process(arg, Argument.ONE)
+        process_cmd(arg, Argument.ONE)
 
     def do_stop(self, arg):
         """stop <name>: Stop a process"""
-        process(arg, Argument.ONE)
+        process_cmd(arg, Argument.ONE)
 
     def do_status(self, arg):
         "status       : Get all process status info\nstatus <name>: Get status for a single process"
-        process(arg, Argument.OPTIONAL)
+        process_cmd(arg, Argument.OPTIONAL)
 
     def do_update(self, arg):
         """update <filename>: Reload the config file and add/remove tasks as necessary"""
-        process(arg, Argument.ONE)
+        process_cmd(arg, Argument.ONE)
 
     def complete_update(self, text, line, *_):
         mline = line.partition(" ")[2]
