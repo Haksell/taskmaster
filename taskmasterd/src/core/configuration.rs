@@ -100,26 +100,26 @@ impl Display for State {
 pub struct Configuration {
     #[serde(deserialize_with = "deserialize_string_and_trim")]
     #[validate(length(min = 1, message = "cmd: can't be empty"))]
-    pub(crate) cmd: String, //make immutable (e.g. getters?)
+    pub cmd: String, //make immutable (e.g. getters?)
     #[validate(range(min = 1))]
-    pub(crate) num_procs: u32,
+    pub num_procs: u32,
     #[serde(deserialize_with = "deserialize_umask")]
     #[validate(custom = "validate_umask")]
-    pub(crate) umask: u32,
+    pub umask: u32,
     #[serde(deserialize_with = "deserialize_option_string_and_trim")]
-    pub(crate) working_dir: Option<String>,
-    pub(crate) auto_start: bool,
-    pub(crate) auto_restart: AutoRestart,
+    pub working_dir: Option<String>,
+    pub auto_start: bool,
+    pub auto_restart: AutoRestart,
     exit_codes: Vec<i32>,
     pub start_retries: u32, //make immutable (e.g. getters?)
-    pub(crate) start_time: u64,
+    pub start_time: u64,
     pub stop_signal: StopSignal,
     stop_time: u32,
     #[serde(deserialize_with = "deserialize_option_string_and_trim")]
-    pub(crate) stdout: Option<String>,
+    pub stdout: Option<String>,
     #[serde(deserialize_with = "deserialize_option_string_and_trim")]
-    pub(crate) stderr: Option<String>,
-    pub(crate) env: BTreeMap<String, String>,
+    pub stderr: Option<String>,
+    pub env: BTreeMap<String, String>,
 }
 
 impl Default for Configuration {

@@ -12,11 +12,11 @@ use std::time::{Duration, SystemTime};
 //TODO: Check existing of working dir
 
 pub struct Task {
-    pub(crate) configuration: Configuration,
-    pub(crate) state: State,
+    pub configuration: Configuration,
+    pub state: State,
     _restarts_left: u32,
-    pub(crate) child: Option<Child>,
-    pub(crate) exit_code: Option<i32>,
+    pub child: Option<Child>,
+    pub exit_code: Option<i32>,
 }
 
 impl Task {
