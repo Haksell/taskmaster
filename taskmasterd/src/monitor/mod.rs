@@ -67,6 +67,9 @@ impl Monitor {
             None => {
                 self.logger
                     .log("Task status: no task name was specified. Returning all tasks status");
+                if tasks.is_empty() {
+                    return "No task found.".to_string();
+                }
                 tasks
                     .iter()
                     .map(|(name, task)| {
