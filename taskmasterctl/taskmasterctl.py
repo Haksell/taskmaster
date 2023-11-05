@@ -1,4 +1,4 @@
-# TODO: empty line
+# TODO: parse action.rs to avoid code duplication
 
 import cmd
 import glob
@@ -6,14 +6,13 @@ import json
 import socket
 import readline
 
-HEADER = "\033[95m"
-BLUE = "\033[94m"
-CYAN = "\033[96m"
-GREEN = "\033[92m"
-YELLOW = "\033[93m"
-RED = "\033[91m"
+BUFFER_SIZE = 1024
+
 RESET = "\033[0m"
 BOLD = "\033[1m"
+RED = "\033[91m"
+GREEN = "\033[92m"
+CYAN = "\033[96m"
 
 
 def send_to_socket(message):
@@ -21,8 +20,15 @@ def send_to_socket(message):
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
             s.connect("/tmp/.unixdomain.sock")
             s.sendall(message.encode())
-            response = s.recv(1024)  # TODO: receive all
+            response_parts = []
+            while True:
+                part = s.recv(BUFFER_SIZE)
+                if not part:
+                    break
+                response_parts.append(part)
+            response = b"".join(response_parts)
             response = response.decode().rstrip()
+
             if response:
                 print(response)
     except Exception as e:
@@ -72,7 +78,7 @@ class TaskMasterShell(cmd.Cmd):
             print()
             return True
         else:
-            print(f"{arg}: command not found")
+            print(f"{arg.split()[0]}: command not found")
 
     def do_exit(self, arg):
         """exit : Exit the taskmaster shell"""
