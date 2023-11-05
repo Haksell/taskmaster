@@ -8,37 +8,37 @@ RED := \033[1m\033[31m
 
 define rm
 @if [ -e "$(1)" ]; then \
-	sudo rm -rf "$(1)"; \
+	rm -rf "$(1)"; \
 	echo "$(RED)[X] $(1) removed.$(RESET)"; \
 fi
 endef
 
-revagrant: fclean vagrant
+revagrant: cleanvagrant vagrant
 
 vagrant:
 	vagrant up --provision
 	vagrant ssh
 
+cleanvagrant:
+	vagrant destroy -f
+	$(call rm,.vagrant)
+
 server:
 	$(call rm,$(SOCKET))
-	sudo cargo run --manifest-path taskmasterd/Cargo.toml
+	cargo run --manifest-path taskmasterd/Cargo.toml
 
 debug:
 	$(call rm,$(SOCKET))
-	sudo cargo run --manifest-path taskmasterd/Cargo.toml -- --debug
+	cargo run --manifest-path taskmasterd/Cargo.toml -- --debug
 
 stop:
-	-@sudo kill -TERM $$(sudo cat $(PID_FILE))
+	-@kill -TERM $$(cat $(PID_FILE) 2>/dev/null) 2>/dev/null
 	$(call rm,$(PID_FILE))
 
 client:
-	@sudo python3 taskmasterctl/taskmasterctl.py
+	@python3 taskmasterctl/taskmasterctl.py
 
-clean:  stop
-	$(call sudo,rm,$(SOCKET))
+clean: stop
+	$(call rm,$(SOCKET))
 	@rm -rf $(GARBAGE)
 	$(call rm,target)
-
-fclean: clean
-	vagrant destroy -f
-	$(call rm,.vagrant)
