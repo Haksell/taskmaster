@@ -96,7 +96,7 @@ impl Monitor {
                 None => {
                     self.logger
                         .log(format!("Task status: {task_name} wasn't found"));
-                    format!("Can't find \"{task_name}\" task")
+                    format!("Error! Can't find \"{task_name}\" task")
                 }
                 Some(task) => {
                     self.logger
@@ -142,13 +142,13 @@ impl Monitor {
                 if let Err(e_msg) = process.stop() {
                     self.logger
                         .log(format!("Stop task: can't stop {name} #{}: {e_msg}", i + 1));
-                    return Err(format!("Can't stop {name} #{i}"));
+                    return Err(format!("Error! Can't stop {name} #{i}"));
                 }
             }
             Ok(())
         } else {
             self.logger.log(format!("Stop task: {name} wasn't found"));
-            Err(format!("Can't find \"{name}\" task"))
+            Err(format!("Error! Can't find \"{name}\" task"))
         }
     }
 
@@ -160,12 +160,12 @@ impl Monitor {
                 if let Err(e_msg) = process.run() {
                     self.logger
                         .log(format!("Start task: can't start {name}..."));
-                    return Err(format!("Can't run {name} #{}: {e_msg}", i + 1));
+                    return Err(format!("Error! Can't run {name} #{}: {e_msg}", i + 1));
                 }
             }
             Ok(())
         } else {
-            Err(format!("Can't find \"{name}\" task"))
+            Err(format!("Error! Can't find \"{name}\" task"))
         }
     }
 
@@ -295,7 +295,7 @@ impl Monitor {
         match action {
             Action::Status(status) => self.get_task_status(status),
             Action::Config(task_name) => match self.get_task_json_config_by_name(&task_name) {
-                None => format!("Can't find \"{task_name}\" task"),
+                None => format!("Error! Can't find \"{task_name}\" task"),
                 Some(task) => format!("{task_name}: {task}"),
             },
             Action::Shutdown => exit(0),
@@ -310,7 +310,7 @@ impl Monitor {
             Action::Update(config_path) => {
                 match Configuration::from_yml(String::from(config_path)) {
                     Ok(conf) => self.update_configuration(conf),
-                    Err(err_msg) => err_msg,
+                    Err(err_msg) => format!("Error! {err_msg}"),
                 }
             }
         }

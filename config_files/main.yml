@@ -10,7 +10,7 @@ task6:
   start_retries: 3
   start_time: 0
   stop_signal: USR1
-  stop_time: 0
+  stop_time: 1
   stdout: /tmp/task2.stdout
   stderr: /tmp/task2.stderr
 

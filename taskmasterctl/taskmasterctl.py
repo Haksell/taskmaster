@@ -73,7 +73,10 @@ def send_to_socket(message):
                 response_parts.append(part)
             response = b"".join(response_parts).decode().rstrip()
             if response:
-                print(response)
+                if response.startswith("Error! "):
+                    print_error(response[7:])
+                else:
+                    print(response)
             elif message == "Shutdown":
                 print("Shutdown successful")
     except Exception as e:

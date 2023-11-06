@@ -27,7 +27,9 @@ impl<'a> Responder<'a> {
                 stream
             }
             Err(_) => {
-                logger.log_err(format!("Can't bind socket \"{UNIX_DOMAIN_SOCKET_PATH}\""));
+                logger.log_err(format!(
+                    "Error! Can't bind socket \"{UNIX_DOMAIN_SOCKET_PATH}\""
+                ));
                 exit(2);
             }
         };
@@ -36,11 +38,12 @@ impl<'a> Responder<'a> {
     fn write_message(&mut self, message: &String) {
         if let Err(e) = self.stream.write(message.as_bytes()) {
             self.logger.log(format!(
-                "Can't answer to the client with message: \"{message}\": {e}"
+                "Error! Can't answer to the client with message: \"{message}\": {e}"
             ))
         }
         if let Err(e) = self.stream.flush() {
-            self.logger.log(format!("Can't flush the stdout: {e}"))
+            self.logger
+                .log(format!("Error! Can't flush the stdout: {e}"))
         }
     }
 
@@ -56,8 +59,8 @@ impl<'a> Responder<'a> {
             }
             Err(error) => {
                 self.logger
-                    .log(format!("Unknown action: {received_data}: {error}"));
-                self.write_message(&"Error, unknown action".to_string());
+                    .log(format!("Error! Unknown action: {received_data}: {error}"));
+                self.write_message(&"Error! Unknown action".to_string());
             }
         }
     }
@@ -86,7 +89,7 @@ impl<'a> Responder<'a> {
                     }
                 }
                 Err(e) => {
-                    logger.log_err(format!("Error accepting connection: {e}"));
+                    logger.log_err(format!("Error! Can't accept a connection: {e}"));
                 }
             }
         }
