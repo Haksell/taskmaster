@@ -134,7 +134,7 @@ pub struct Configuration {
     pub start_retries: u32, //make immutable (e.g. getters?)
     pub start_time: u64,
     pub stop_signal: StopSignal,
-    #[validate(range(min = 1))]
+    #[validate(range(min = 1, message = "invalid stop_time"))]
     pub stop_time: u64,
     #[serde(deserialize_with = "deserialize_option_string_and_trim")]
     pub stdout: Option<String>,
@@ -174,21 +174,31 @@ impl Configuration {
             .map_err(|err| format!("Can't read the file: {err}"))?;
         let tasks: BTreeMap<String, Configuration> =
             serde_yaml::from_str(&content).map_err(|err| err.to_string())?;
+        let mut errors = Vec::new();
         for (key, task) in &tasks {
             match task.validate() {
                 Ok(_) => logger.log(format!("{key}: validated")),
                 Err(e) => {
                     for (_k, value) in e.field_errors() {
-                        return if let Some(message) = value[0].message.as_ref() {
-                            Err(format!("{key}: {:?}", message.to_string()))
-                        } else {
-                            Err(format!("{key}: {:?}", value[0].code))
-                        };
+                        for validation_error in value {
+                            errors.push(format!(
+                                "Configuration error: {key}: {:?}",
+                                if let Some(message) = validation_error.message.as_ref() {
+                                    message.to_string()
+                                } else {
+                                    validation_error.code.to_string()
+                                }
+                            ));
+                        }
                     }
                 }
             }
         }
-        Ok(tasks)
+        if errors.is_empty() {
+            Ok(tasks)
+        } else {
+            Err(errors.join("\n"))
+        }
     }
 }
 
