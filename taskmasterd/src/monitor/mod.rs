@@ -2,7 +2,7 @@ use crate::api::action::Action;
 use crate::core::configuration::State::{
     BACKOFF, FATAL, FINISHED, RUNNING, STARTING, STOPPED, UNKNOWN, _EXITED,
 };
-use crate::core::configuration::{AutoRestart, Configuration, State};
+use crate::core::configuration::{AutoRestart, Configuration};
 use crate::core::logger::Logger;
 use crate::core::task::Task;
 use std::collections::btree_map::Entry;
