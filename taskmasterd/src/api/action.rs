@@ -5,7 +5,7 @@ pub enum Action {
     Config(String),
     Update(String),
     Status(Option<String>),
-    Start(String),
+    Start(String, Option<usize>),
     Stop(String),
     Shutdown,
 }

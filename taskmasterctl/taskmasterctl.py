@@ -26,18 +26,21 @@ class Argument(Enum):
     ZERO = auto()
     OPTIONAL = auto()
     ONE = auto()
+    ONE_OR_TWO = auto()
 
 
 CHECK_ARGC = {
     Argument.ZERO: lambda argc: argc == 0,
     Argument.OPTIONAL: lambda argc: argc <= 1,
     Argument.ONE: lambda argc: argc == 1,
+    Argument.ONE_OR_TWO: lambda argc: 1 <= argc <= 2
 }
 
 ARGUMENT_STRING = {
     Argument.ZERO: "doesn't accept an",
     Argument.OPTIONAL: "accepts zero or one",
     Argument.ONE: "requires exactly one",
+    Argument.ONE_OR_TWO: "requires exactly one or two arguments",
 }
 
 

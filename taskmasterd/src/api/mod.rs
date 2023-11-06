@@ -39,11 +39,11 @@ impl<'a> Responder<'a> {
         if let Err(e) = self.stream.write(message.as_bytes()) {
             self.logger.log(format!(
                 "Error! Can't answer to the client with message: \"{message}\": {e}"
-            ))
+            ));
         }
         if let Err(e) = self.stream.flush() {
             self.logger
-                .log(format!("Error! Can't flush the stdout: {e}"))
+                .log(format!("Error! Can't flush the stdout: {e}"));
         }
     }
 

@@ -78,7 +78,7 @@ impl Monitor {
                         let process_lines: Vec<String> = task
                             .iter()
                             .enumerate()
-                            .map(|(position, process)| format!("\n\t{}. {process}", position + 1))
+                            .map(|(position, process)| format!("\n\t{position}. {process}"))
                             .collect();
                         format!(
                             "{name}:\t\t{}\t",
@@ -134,7 +134,7 @@ impl Monitor {
     }
 
     //if it was stopped manually do need to relaunch? check conditions
-    fn stop_task_by_name(&mut self, name: &String) -> Result<(), String> {
+    fn stop_task_group(&mut self, name: &String) -> Result<(), String> {
         let mut tasks = self.tasks.lock().unwrap();
         self.logger.log(format!("Stop task: stopping {name}..."));
         if let Some(task) = tasks.get_mut(name) {
@@ -152,21 +152,53 @@ impl Monitor {
         }
     }
 
-    fn start_task_by_name(&mut self, name: &String) -> Result<(), String> {
+    fn start_task(&mut self, name: &String, num: &Option<usize>) -> String {
         let mut tasks = self.tasks.lock().unwrap();
-        self.logger.log(format!("Start task: starting {name}..."));
-        if let Some(task) = tasks.get_mut(name) {
-            for (i, process) in task.iter_mut().enumerate() {
-                if let Err(e_msg) = process.run() {
+        let mut result = String::new();
+        if let Some(task_group) = tasks.get_mut(name) {
+            match num {
+                None => {
                     self.logger
-                        .log(format!("Start task: can't start {name}..."));
-                    return Err(format!("Error! Can't run {name} #{}: {e_msg}", i + 1));
+                        .log(format!("All task in {name} has been initialized"));
+                    for (i, process) in task_group.iter_mut().enumerate() {
+                        if process.can_be_launched() {
+                            if let Err(e_msg) = process.run() {
+                                result += &self
+                                    .logger
+                                    .log(format!("{name}#{i}: Error during the start: {e_msg}\n"));
+                            }
+                        } else {
+                            result += &self.logger.log(format!(
+                                "{name}#{i}: Can't be started. Current status {}\n",
+                                process.state
+                            ))
+                        }
+                    }
                 }
+                Some(index) => match task_group.get_mut(*index) {
+                    None => {
+                        result += &self.logger.log(format!(
+                            "{name}#{index}: Can't be started, it doesn't exist\n"
+                        ))
+                    }
+                    Some(task) => match task.run() {
+                        Ok(_) => {
+                            result += &self
+                                .logger
+                                .log(format!("{name}#{index}: has been started\n"))
+                        }
+                        Err(err) => {
+                            result += &self
+                                .logger
+                                .log(format!("{name}#{index}: Can't be launched: {err}\n"))
+                        }
+                    },
+                },
             }
-            Ok(())
         } else {
-            Err(format!("Error! Can't find \"{name}\" task"))
+            return format!("Error! Can't find \"{name}\" task");
         }
+        result
     }
 
     fn manage_finished_state(
@@ -188,7 +220,7 @@ impl Monitor {
                     process.state = FATAL(format!("exited too quickly"));
                     logger.log(format!(
                         "{task_name}: No restarts left, status has been changed to fatal."
-                    ))
+                    ));
                 } else {
                     process.restarts_left -= 1;
                     logger.log(format!("{task_name}: Restarting, exited too quickly"));
@@ -200,7 +232,7 @@ impl Monitor {
                 match process.configuration.auto_restart {
                     AutoRestart::True => {
                         let _ = process.run();
-                        logger.log(format!("{task_name}: Relaunching..."))
+                        logger.log(format!("{task_name}: Relaunching..."));
                     }
                     AutoRestart::False => {
                         logger.log(format!("{task_name}: auto restart disabled."));
@@ -248,13 +280,13 @@ impl Monitor {
                     for (i, process) in task.iter_mut().enumerate() {
                         if let STARTING(started_at) = process.state {
                             if process.is_passed_starting_period(started_at) {
-                                logger.log(format!("{name} #{}: is running now", i + 1));
+                                logger.log(format!("{name} #{i}: is running now"));
                                 process.state = RUNNING(started_at);
                             }
                         }
                         if let STOPPING(stopped_at) = process.state {
                             if process.is_passed_stopping_period(stopped_at) {
-                                logger.log(format!("{name} #{}: Should be killed", i + 1));
+                                logger.log(format!("{name} #{i}: Should be killed"));
                                 //TODO: handle
                                 let _ = process.kill();
                             }
@@ -264,7 +296,7 @@ impl Monitor {
                                 Ok(Some(status)) => {
                                     Monitor::manage_finished_state(
                                         process,
-                                        format!("{name} #{}", i + 1),
+                                        format!("{name} #{i}"),
                                         status.code(),
                                         &logger,
                                     );
@@ -278,7 +310,7 @@ impl Monitor {
                                 if process.configuration.auto_start
                                     && process.state == STOPPED(None)
                                 {
-                                    logger.log(format!("Auto starting {name} #{}", i + 1));
+                                    logger.log(format!("Auto starting {name} #{i}"));
                                     let _ = process.run(); // TODO: handle error
                                 }
                             }
@@ -299,11 +331,8 @@ impl Monitor {
                 Some(task) => format!("{task_name}: {task}"),
             },
             Action::Shutdown => exit(0),
-            Action::Start(task_name) => match self.start_task_by_name(&task_name) {
-                Ok(_) => String::new(),
-                Err(err_msg) => err_msg,
-            },
-            Action::Stop(task_name) => match self.stop_task_by_name(&task_name) {
+            Action::Start(task_name, num) => self.start_task(&task_name, &num),
+            Action::Stop(task_name) => match self.stop_task_group(&task_name) {
                 Ok(_) => String::new(),
                 Err(err_msg) => err_msg,
             },

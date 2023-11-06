@@ -176,7 +176,9 @@ impl Configuration {
             serde_yaml::from_str(&content).map_err(|err| err.to_string())?;
         for (key, task) in &tasks {
             match task.validate() {
-                Ok(_) => logger.log(format!("{key}: validated")),
+                Ok(_) => {
+                    logger.log(format!("{key}: validated"));
+                }
                 Err(e) => {
                     for (_k, value) in e.field_errors() {
                         return if let Some(message) = value[0].message.as_ref() {

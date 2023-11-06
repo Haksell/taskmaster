@@ -148,6 +148,13 @@ impl Task {
             .unwrap_or(Duration::from_secs(0));
         elapsed_time.as_secs() >= self.configuration.stop_time
     }
+
+    pub fn can_be_launched(&self) -> bool {
+        match self.state {
+            STOPPED(_) | EXITED(_) | FATAL(_) => true,
+            _ => false,
+        }
+    }
 }
 
 impl Display for Task {
