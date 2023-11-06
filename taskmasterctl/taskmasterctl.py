@@ -186,7 +186,7 @@ class TaskMasterShell(cmd.Cmd):
 
     def do_update(self, arg):
         """update <filename> : Reload the config file and add/remove tasks as necessary"""
-        process_cmd(arg, Argument.ONE)
+        process_cmd(arg, Argument.OPTIONAL)
 
     def complete_update(self, text, line, *_):
         mline = line.partition(" ")[2]
