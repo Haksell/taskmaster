@@ -94,10 +94,20 @@ def process_cmd(arg, expected_argument):
     argc = len(argv)
     if CHECK_ARGC[expected_argument](argc):
         command = method_name[3:].title()
+        if expected_argument == Argument.ONE_OR_TWO:
+            if argc == 1:
+                idx = None
+            else:
+                try:
+                    idx = int(argv[1])
+                    assert idx >= 0
+                except (AssertionError, ValueError):
+                    print_error(f'Invalid index: "{argv[1]}"')
+                    return
         message = json.dumps(
             command
             if expected_argument == Argument.ZERO
-            else {command: [argv[0], argv[1] or None]}
+            else {command: [argv[0], idx]}
             if expected_argument == Argument.ONE_OR_TWO
             else {command: arg or None}
         )
