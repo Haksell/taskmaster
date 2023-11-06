@@ -1,7 +1,5 @@
-# TODO: parse action.rs to avoid code duplication
-
 import cmd
-from enum import Enum
+from enum import Enum, auto
 import glob
 import inspect
 import json
@@ -25,9 +23,22 @@ PROMPT_END_IGNORE = "\002"
 
 
 class Argument(Enum):
-    ZERO = "no"
-    OPTIONAL = "zero or one"
-    ONE = "one"
+    ZERO = auto()
+    OPTIONAL = auto()
+    ONE = auto()
+
+
+CHECK_ARGC = {
+    Argument.ZERO: lambda argc: argc == 0,
+    Argument.OPTIONAL: lambda argc: argc <= 1,
+    Argument.ONE: lambda argc: argc == 1,
+}
+
+ARGUMENT_STRING = {
+    Argument.ZERO: "doesn't accept an",
+    Argument.OPTIONAL: "accepts zero or one",
+    Argument.ONE: "requires exactly one",
+}
 
 
 def print_error(s):
@@ -74,33 +85,18 @@ def process_cmd(arg, expected_argument):
     calling_frame = current_frame.f_back
     method_name = calling_frame.f_code.co_name
     argc = len(arg.split())
-    if (
-        expected_argument == Argument.ZERO
-        and argc == 0
-        or expected_argument == Argument.OPTIONAL
-        and argc <= 1
-        or expected_argument == Argument.ONE
-        and argc == 1
-    ):
+    if CHECK_ARGC[expected_argument](argc):
         command = method_name[3:].title()
         message = json.dumps(
             command if expected_argument == Argument.ZERO else {command: arg or None}
         )
         send_to_socket(message)
     else:
-        print_error(f"{method_name[3:]} requires {expected_argument.value} argument")
-        class_name = (
-            calling_frame.f_locals.get("self", None).__class__.__name__
-            if "self" in calling_frame.f_locals
-            else None
-        )
-        if class_name:
-            method = getattr(
-                eval(class_name, calling_frame.f_globals), method_name, None
-            )
-        else:
-            method = calling_frame.f_globals.get(method_name)
-        print(inspect.getdoc(method))
+        argument_string = ARGUMENT_STRING[expected_argument]
+        print_error(f"{method_name[3:]} {argument_string} argument")
+        class_name = calling_frame.f_locals["self"].__class__.__name__
+        method = getattr(eval(class_name, calling_frame.f_globals), method_name, None)
+        print(method.__doc__)
 
 
 def input_swallowing_interrupt(_input):
@@ -141,34 +137,34 @@ class TaskMasterShell(cmd.Cmd):
         else:
             print(f"{arg.split()[0]}: command not found")
 
-    def do_exit(self, arg):
-        """exit: Exit the taskmaster shell"""
+    def do_exit(self, _):
+        """exit : Exit the taskmaster shell"""
         return True
 
     do_quit = do_exit
 
     def do_config(self, arg):
-        """config <name>: Get the task configuration in json"""
+        """config <name> : Get the task configuration in json"""
         process_cmd(arg, Argument.ONE)
 
     def do_shutdown(self, arg):
-        """shutdown: Shut the remote taskmasterd down."""
+        """shutdown : Shut the remote taskmasterd down."""
         process_cmd(arg, Argument.ZERO)
 
     def do_start(self, arg):
-        """start <name>: Start a process"""
+        """start <name> : Start a process"""
         process_cmd(arg, Argument.ONE)
 
     def do_stop(self, arg):
-        """stop <name>: Stop a process"""
+        """stop <name> : Stop a process"""
         process_cmd(arg, Argument.ONE)
 
     def do_status(self, arg):
-        "status       : Get all process status info\nstatus <name>: Get status for a single process"
+        "status        : Get all process status info\nstatus <name> : Get status for a single process"
         process_cmd(arg, Argument.OPTIONAL)
 
     def do_update(self, arg):
-        """update <filename>: Reload the config file and add/remove tasks as necessary"""
+        """update <filename> : Reload the config file and add/remove tasks as necessary"""
         process_cmd(arg, Argument.ONE)
 
     def complete_update(self, text, line, *_):
