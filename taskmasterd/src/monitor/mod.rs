@@ -141,7 +141,7 @@ impl Monitor {
             for (i, process) in task.iter_mut().enumerate() {
                 if let Err(e_msg) = process.stop() {
                     self.logger
-                        .log(format!("Stop task: can't stop {name} #{}: {e_msg}", i + 1));
+                        .log(format!("Stop task: can't stop {name} #{i}: {e_msg}"));
                     return Err(format!("Error! Can't stop {name} #{i}"));
                 }
             }

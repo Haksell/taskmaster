@@ -26,21 +26,21 @@ class Argument(Enum):
     ZERO = auto()
     OPTIONAL = auto()
     ONE = auto()
-    ONE_OR_TWO = auto()
+    ONE_OR_TWO = auto()  # TODO: ZERO_OR_TWO
 
 
 CHECK_ARGC = {
     Argument.ZERO: lambda argc: argc == 0,
     Argument.OPTIONAL: lambda argc: argc <= 1,
     Argument.ONE: lambda argc: argc == 1,
-    Argument.ONE_OR_TWO: lambda argc: 1 <= argc <= 2
+    Argument.ONE_OR_TWO: lambda argc: 1 <= argc <= 2,
 }
 
 ARGUMENT_STRING = {
-    Argument.ZERO: "doesn't accept an",
-    Argument.OPTIONAL: "accepts zero or one",
-    Argument.ONE: "requires exactly one",
-    Argument.ONE_OR_TWO: "requires exactly one or two arguments",
+    Argument.ZERO: "doesn't accept an argument",
+    Argument.OPTIONAL: "accepts zero or one argument",
+    Argument.ONE: "requires exactly one argument",
+    Argument.ONE_OR_TWO: "requires one or two arguments",
 }
 
 
@@ -90,16 +90,21 @@ def process_cmd(arg, expected_argument):
     current_frame = inspect.currentframe()
     calling_frame = current_frame.f_back
     method_name = calling_frame.f_code.co_name
-    argc = len(arg.split())
+    argv = arg.split()
+    argc = len(argv)
     if CHECK_ARGC[expected_argument](argc):
         command = method_name[3:].title()
         message = json.dumps(
-            command if expected_argument == Argument.ZERO else {command: arg or None}
+            command
+            if expected_argument == Argument.ZERO
+            else {command: [argv[0], argv[1] or None]}
+            if expected_argument == Argument.ONE_OR_TWO
+            else {command: arg or None}
         )
         send_to_socket(message)
     else:
         argument_string = ARGUMENT_STRING[expected_argument]
-        print_error(f"{method_name[3:]} {argument_string} argument")
+        print_error(f"{method_name[3:]} {argument_string}")
         class_name = calling_frame.f_locals["self"].__class__.__name__
         method = getattr(eval(class_name, calling_frame.f_globals), method_name, None)
         print(method.__doc__)
@@ -159,7 +164,7 @@ class TaskMasterShell(cmd.Cmd):
 
     def do_start(self, arg):
         """start <name> : Start a process"""
-        process_cmd(arg, Argument.ONE)
+        process_cmd(arg, Argument.ONE_OR_TWO)
 
     def do_stop(self, arg):
         """stop <name> : Stop a process"""
