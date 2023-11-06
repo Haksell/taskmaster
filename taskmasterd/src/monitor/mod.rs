@@ -96,7 +96,7 @@ impl Monitor {
                 None => {
                     self.logger
                         .log(format!("Task status: {task_name} wasn't found"));
-                    format!("Can't find \"{task_name}\" task")
+                    format!("Error! Can't find \"{task_name}\" task")
                 }
                 Some(task) => {
                     self.logger
@@ -142,13 +142,13 @@ impl Monitor {
                 if let Err(e_msg) = process.stop() {
                     self.logger
                         .log(format!("Stop task: can't stop {name} #{}: {e_msg}", i + 1));
-                    return Err(format!("Can't stop {name} #{i}"));
+                    return Err(format!("Error! Can't stop {name} #{i}"));
                 }
             }
             Ok(())
         } else {
             self.logger.log(format!("Stop task: {name} wasn't found"));
-            Err(format!("Can't find \"{name}\" task"))
+            Err(format!("Error! Can't find \"{name}\" task"))
         }
     }
 
@@ -160,12 +160,12 @@ impl Monitor {
                 if let Err(e_msg) = process.run() {
                     self.logger
                         .log(format!("Start task: can't start {name}..."));
-                    return Err(format!("Can't run {name} #{}: {e_msg}", i + 1));
+                    return Err(format!("Error! Can't run {name} #{}: {e_msg}", i + 1));
                 }
             }
             Ok(())
         } else {
-            Err(format!("Can't find \"{name}\" task"))
+            Err(format!("Error! Can't find \"{name}\" task"))
         }
     }
 
