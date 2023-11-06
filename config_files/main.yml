@@ -32,8 +32,8 @@ sleep_ls:
   stderr: /tmp/task2.stderr
   
 show_signal:
-  cmd: "./scripts/print_hello.py"
-  num_procs: 1
+  cmd: "./scripts/catch_sighup.py"
+  num_procs: 6
   umask: 777
   auto_start: false
   auto_restart: unexpected
@@ -43,13 +43,13 @@ show_signal:
   start_retries: 3
   start_time: 0
   stop_signal: HUP
-  stop_time: 10
-  stdout: /tmp/task11.stdout
-  stderr: /tmp/task11.stderr
+  stop_time: 15
+  stdout: /tmp/task100.stdout
+  stderr: /tmp/task100.stderr
 
 task3:
   cmd: "./scripts/echo_answer_inf_loop.sh"
-  num_procs: 5
+  num_procs: 2
   umask: 777
   auto_start: true
   auto_restart: unexpected

@@ -178,7 +178,7 @@ class TaskMasterShell(cmd.Cmd):
 
     def do_stop(self, arg):
         """stop <name> : Stop a process"""
-        process_cmd(arg, Argument.ONE)
+        process_cmd(arg, Argument.ONE_OR_TWO)
 
     def do_status(self, arg):
         "status        : Get all process status info\nstatus <name> : Get status for a single process"

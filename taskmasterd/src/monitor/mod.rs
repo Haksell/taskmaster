@@ -135,23 +135,53 @@ impl Monitor {
         };
     }
 
-    //if it was stopped manually do need to relaunch? check conditions
-    fn stop_task_group(&mut self, name: &String) -> Result<(), String> {
+    fn stop_task(&mut self, name: &String, num: &Option<usize>) -> String {
         let mut tasks = self.tasks.lock().unwrap();
-        self.logger.log(format!("Stop task: stopping {name}..."));
-        if let Some(task) = tasks.get_mut(name) {
-            for (i, process) in task.iter_mut().enumerate() {
-                if let Err(e_msg) = process.stop() {
+        let mut result = String::new();
+        if let Some(task_group) = tasks.get_mut(name) {
+            match num {
+                None => {
                     self.logger
-                        .log(format!("Stop task: can't stop {name} #{i}: {e_msg}"));
-                    return Err(format!("Error! Can't stop {name} #{i}"));
+                        .log(format!("All task in {name} will be stopped"));
+                    for (i, process) in task_group.iter_mut().enumerate() {
+                        if let RUNNING(_) = process.state {
+                            if let Err(e_msg) = process.stop() {
+                                result += &self
+                                    .logger
+                                    .log(format!("{name}#{i}: Error during the stop: {e_msg}\n"));
+                            } else {
+                                result += &self.logger.log(format!("{name}#{i}: Stopping...\n"))
+                            }
+                        } else {
+                            result += &self.logger.log(format!(
+                                "{name}#{i}: Can't be stopped. Current status {}\n",
+                                process.state
+                            ))
+                        }
+                    }
                 }
+                Some(index) => match task_group.get_mut(*index) {
+                    None => {
+                        result += &self.logger.log(format!(
+                            "{name}#{index}: Can't be stopped, it doesn't exist\n"
+                        ))
+                    }
+                    Some(task) => match task.stop() {
+                        Ok(_) => {
+                            result += &self.logger.log(format!("{name}#{index}: Stopping...\n"))
+                        }
+                        Err(err) => {
+                            result += &self
+                                .logger
+                                .log(format!("{name}#{index}: Can't be stopped: {err}\n"))
+                        }
+                    },
+                },
             }
-            Ok(())
         } else {
-            self.logger.log(format!("Stop task: {name} wasn't found"));
-            Err(format!("Error! Can't find \"{name}\" task"))
+            return format!("Error! Can't find \"{name}\" task");
         }
+        result
     }
 
     fn start_task(&mut self, name: &String, num: &Option<usize>) -> String {
@@ -161,7 +191,7 @@ impl Monitor {
             match num {
                 None => {
                     self.logger
-                        .log(format!("All task in {name} has been initialized"));
+                        .log(format!("All task in {name} will be started"));
                     for (i, process) in task_group.iter_mut().enumerate() {
                         if process.can_be_launched() {
                             if let Err(e_msg) = process.run() {
@@ -336,10 +366,7 @@ impl Monitor {
             },
             Action::Shutdown => exit(0),
             Action::Start(task_name, num) => self.start_task(&task_name, &num),
-            Action::Stop(task_name) => match self.stop_task_group(&task_name) {
-                Ok(_) => String::new(),
-                Err(err_msg) => err_msg,
-            },
+            Action::Stop(task_name, num) => self.stop_task(&task_name, &num),
             Action::Update(arg) => {
                 if let Some(config_path) = arg {
                     self.config_path = config_path;

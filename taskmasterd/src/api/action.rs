@@ -6,6 +6,6 @@ pub enum Action {
     Update(Option<String>),
     Status(Option<String>),
     Start(String, Option<usize>),
-    Stop(String),
+    Stop(String, Option<usize>),
     Shutdown,
 }
