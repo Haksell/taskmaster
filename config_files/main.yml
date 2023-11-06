@@ -1,5 +1,5 @@
 task6:
-  cmd: "ls -la"
+  cmd: "echo hello"
   num_procs: 1
   umask: 777
   auto_start: true
@@ -8,7 +8,7 @@ task6:
     - 0
     - 2
   start_retries: 3
-  start_time: 5
+  start_time: 0
   stop_signal: USR1
   stop_time: 0
   stdout: /tmp/task2.stdout
@@ -30,6 +30,23 @@ sleep_ls:
   stop_time: 5
   stdout: /tmp/task2.stdout
   stderr: /tmp/task2.stderr
+  
+show_signal:
+  cmd: "/Users/amyroshn/Documents/rustmaster/scripts/print_hello.py"
+  num_procs: 1
+  umask: 777
+  auto_start: false
+  auto_restart: unexpected
+  exit_codes:
+    - 0
+    - 2
+  start_retries: 3
+  start_time: 0
+  stop_signal: HUP
+  stop_time: 10
+  stdout: /tmp/task11.stdout
+  stderr: /tmp/task11.stderr
+
 task3:
   cmd: "/Users/amyroshn/Documents/rustmaster/scripts/echo_answer_inf_loop.sh"
   num_procs: 5

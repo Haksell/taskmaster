@@ -1,4 +1,3 @@
-use crate::core::configuration::StopSignal::TERM;
 use crate::core::logger::Logger;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::BTreeMap;
@@ -20,24 +19,23 @@ pub enum AutoRestart {
 
 #[derive(Debug, Eq, PartialEq, Deserialize, Serialize, Clone)]
 pub enum StopSignal {
-    TERM,
-    HUP,
-    INT,
-    QUIT,
-    KILL,
-    USR1,
-    USR2,
-    OTHER(String),
+    TERM = libc::SIGTERM as isize,
+    HUP = libc::SIGHUP as isize,
+    INT = libc::SIGINT as isize,
+    QUIT = libc::SIGQUIT as isize,
+    KILL = libc::SIGKILL as isize,
+    USR1 = libc::SIGUSR1 as isize,
+    USR2 = libc::SIGUSR2 as isize,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub enum State {
-    FINISHED, // TODO: delete, here to debug
     STOPPED(Option<SystemTime>),
     STARTING(SystemTime),
     RUNNING(SystemTime),
     BACKOFF,
-    _EXITED,
+    STOPPING(SystemTime),
+    EXITED(SystemTime),
     FATAL(String),
     UNKNOWN,
 }
@@ -45,31 +43,49 @@ pub enum State {
 impl Display for StopSignal {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            TERM => write!(f, "TERM"),
+            StopSignal::TERM => write!(f, "TERM"),
             StopSignal::HUP => write!(f, "HUP"),
             StopSignal::INT => write!(f, "INT"),
             StopSignal::QUIT => write!(f, "QUIT"),
             StopSignal::KILL => write!(f, "KILL"),
             StopSignal::USR1 => write!(f, "USR1"),
             StopSignal::USR2 => write!(f, "USR2"),
-            StopSignal::OTHER(custom) => write!(f, "{custom}"),
         }
+    }
+}
+
+impl Into<libc::c_int> for StopSignal {
+    fn into(self) -> libc::c_int {
+        match self {
+            StopSignal::TERM => libc::SIGTERM,
+            StopSignal::HUP => libc::SIGHUP,
+            StopSignal::INT => libc::SIGINT,
+            StopSignal::QUIT => libc::SIGQUIT,
+            StopSignal::KILL => libc::SIGKILL,
+            StopSignal::USR1 => libc::SIGUSR1,
+            StopSignal::USR2 => libc::SIGUSR2,
+        }
+    }
+}
+
+impl State {
+    fn at(time_stamp: &SystemTime) -> String {
+        let since_the_epoch = time_stamp.duration_since(UNIX_EPOCH).unwrap();
+        let now_in_sec = since_the_epoch.as_secs();
+        let hours = (now_in_sec % (24 * 3600)) / 3600;
+        let minutes = (now_in_sec % 3600) / 60;
+        let seconds = now_in_sec % 60;
+        format!("at {:02}:{:02}:{:02}", hours, minutes, seconds)
     }
 }
 
 impl Display for State {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let keyword = match self {
-            State::FINISHED => "finished".to_string(),
             State::STOPPED(stopped_at) => match stopped_at {
                 None => "stopped".to_string(),
                 Some(stopped_at) => {
-                    let since_the_epoch = stopped_at.duration_since(UNIX_EPOCH).unwrap();
-                    let now_in_sec = since_the_epoch.as_secs();
-                    let hours = (now_in_sec % (24 * 3600)) / 3600;
-                    let minutes = (now_in_sec % 3600) / 60;
-                    let seconds = now_in_sec % 60;
-                    format!("stopped\tat {:02}:{:02}:{:02}", hours, minutes, seconds)
+                    format!("stopped\t{}", State::at(stopped_at))
                 }
             },
             State::STARTING(_) => "starting".to_string(),
@@ -85,11 +101,14 @@ impl Display for State {
                 format!("running\tuptime {:02}:{:02}:{:02}", hours, minutes, seconds)
             }
             State::BACKOFF => "backoff".to_string(),
-            State::_EXITED => "exited".to_string(),
+            State::EXITED(exited_at) => {
+                format!("exited\t{}", State::at(exited_at))
+            }
             State::FATAL(error) => {
                 format!("fatal\t{error}")
             }
             State::UNKNOWN => "unknown".to_string(),
+            State::STOPPING(_) => "stopping".to_string(),
         };
         write!(f, "{}", keyword)
     }
@@ -114,7 +133,7 @@ pub struct Configuration {
     pub start_retries: u32, //make immutable (e.g. getters?)
     pub start_time: u64,
     pub stop_signal: StopSignal,
-    stop_time: u32,
+    pub stop_time: u64,
     #[serde(deserialize_with = "deserialize_option_string_and_trim")]
     pub stdout: Option<String>,
     #[serde(deserialize_with = "deserialize_option_string_and_trim")]
@@ -134,7 +153,7 @@ impl Default for Configuration {
             exit_codes: vec![0],
             start_retries: 3,
             start_time: 1,
-            stop_signal: TERM,
+            stop_signal: StopSignal::TERM,
             stop_time: 10,
             stdout: None,
             stderr: None,

@@ -1,6 +1,6 @@
 use crate::api::action::Action;
 use crate::core::configuration::State::{
-    BACKOFF, FATAL, FINISHED, RUNNING, STARTING, STOPPED, UNKNOWN, _EXITED,
+    BACKOFF, EXITED, FATAL, RUNNING, STARTING, STOPPED, STOPPING, UNKNOWN,
 };
 use crate::core::configuration::{AutoRestart, Configuration};
 use crate::core::logger::Logger;
@@ -10,7 +10,7 @@ use std::collections::BTreeMap;
 use std::process::exit;
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 pub struct Monitor {
     tasks: Arc<Mutex<BTreeMap<String, Vec<Task>>>>,
@@ -139,7 +139,7 @@ impl Monitor {
         self.logger.log(format!("Stop task: stopping {name}..."));
         if let Some(task) = tasks.get_mut(name) {
             for (i, process) in task.iter_mut().enumerate() {
-                if let Err(e_msg) = process.kill() {
+                if let Err(e_msg) = process.stop() {
                     self.logger
                         .log(format!("Stop task: can't stop {name} #{}: {e_msg}", i + 1));
                     return Err(format!("Can't stop {name} #{i}"));
@@ -179,8 +179,6 @@ impl Monitor {
         process.exit_code = exit_code;
         process.child = None;
         match process.state {
-            FINISHED => {}
-            STOPPED(_) => {}
             STARTING(_) => {
                 process.state = BACKOFF;
                 logger.log(format!(
@@ -194,6 +192,7 @@ impl Monitor {
                 } else {
                     process.restarts_left -= 1;
                     logger.log(format!("{task_name}: Restarting, exited too quickly"));
+                    //TODO: real supervisor doesn't change status to starting if it's backoff
                     let _ = process.run();
                 }
             }
@@ -205,7 +204,7 @@ impl Monitor {
                     }
                     AutoRestart::False => {
                         logger.log(format!("{task_name}: auto restart disabled."));
-                        process.state = FINISHED;
+                        process.state = EXITED(SystemTime::now());
                     }
                     AutoRestart::Unexpected => match exit_code {
                         None => {
@@ -215,7 +214,7 @@ impl Monitor {
                         Some(code) => {
                             if process.configuration.exit_codes.contains(&code) {
                                 logger.log(format!("{task_name}: program has been finished with expected status, relaunch is not needed"));
-                                process.state = FINISHED;
+                                process.state = EXITED(SystemTime::now());
                             } else {
                                 logger.log(format!("{task_name}: {code} is not expected exit status, relaunching..."));
                                 let _ = process.run();
@@ -224,8 +223,16 @@ impl Monitor {
                     },
                 }
             }
+            STOPPING(stopped_at) => {
+                logger.log(format!(
+                    "{task_name}: has stopped by itself after sending a signal"
+                ));
+                process.state = STOPPED(Some(stopped_at));
+            }
+            //TODO: PROBABLY PUT ERROR REACHING FOLLOWING STATES HERE, NORMALLY IT CAN'T BE REACHED
+            STOPPED(_) => {}
             BACKOFF => {}
-            _EXITED => {}
+            EXITED(_) => {}
             FATAL(_) => {}
             UNKNOWN => {}
         }
@@ -246,6 +253,13 @@ impl Monitor {
                             if process.is_passed_starting_period(started_at) {
                                 logger.log(format!("{name} #{}: is running now", i + 1));
                                 process.state = RUNNING(started_at);
+                            }
+                        }
+                        if let STOPPING(stopped_at) = process.state {
+                            if process.is_passed_stopping_period(stopped_at) {
+                                logger.log(format!("{name} #{}: Should be killed", i + 1));
+                                //TODO: handle
+                                let _ = process.kill();
                             }
                         }
                         match &mut process.child {

@@ -1,7 +1,7 @@
 extern crate libc;
 use crate::core::configuration::State::*;
 use crate::core::configuration::{Configuration, State};
-use libc::mode_t;
+use libc::{mode_t, pid_t};
 use std::fmt::{Display, Formatter};
 use std::fs::{File, OpenOptions};
 use std::os::unix::process::CommandExt;
@@ -110,25 +110,20 @@ impl Task {
         };
     }
 
-    //TODO: finish that to send good signal
-    pub fn _stop(&mut self) -> Result<(), String> {
+    pub fn stop(&mut self) -> Result<(), String> {
+        //TODO: IF CURRENT STATE IS ALREADY STOPPING - RETURN MESSAGE
         return match &mut self.child {
             None => Err(format!(
-                "Can't find child process, probably was already stopped or not stared"
+                "Error! Can't find child process, probably was already stopped or not stared"
             )),
             Some(child) => {
-                let _kill = Command::new("kill")
-                    .args([
-                        "-s",
-                        &self.configuration.stop_signal.to_string(),
-                        &child.id().to_string(),
-                    ])
-                    .spawn();
-                if let Err(error) = child.kill() {
-                    return Err(format!("Can't kill child process, {error}"));
+                unsafe {
+                    libc::kill(
+                        child.id() as pid_t,
+                        self.configuration.stop_signal.clone().into(),
+                    );
                 }
-                self.state = STOPPED(Some(SystemTime::now()));
-                self.child = None;
+                self.state = STOPPING(SystemTime::now());
                 Ok(())
             }
         };
@@ -145,13 +140,21 @@ impl Task {
             .unwrap_or(Duration::from_secs(0));
         elapsed_time.as_secs() >= self.configuration.start_time
     }
+
+    pub fn is_passed_stopping_period(&self, stopped_at: SystemTime) -> bool {
+        let current_time = SystemTime::now();
+        let elapsed_time = current_time
+            .duration_since(stopped_at)
+            .unwrap_or(Duration::from_secs(0));
+        elapsed_time.as_secs() >= self.configuration.stop_time
+    }
 }
 
 impl Display for Task {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let mut result = self.state.to_string();
         match self.state {
-            FINISHED => {}
+            STOPPING(_) => {}
             STOPPED(_) => {}
             STARTING(_) => {}
             RUNNING(_) => {
@@ -162,7 +165,7 @@ impl Display for Task {
                 result += &format!("\t\tPID {}", pid)
             }
             BACKOFF => result += "\tExited too quickly",
-            _EXITED => {}
+            EXITED(_) => {}
             FATAL(_) => {}
             UNKNOWN => {}
         };
