@@ -84,11 +84,7 @@ def process_cmd(arg, expected_argument):
     ):
         command = method_name[3:].title()
         message = json.dumps(
-            command
-            if expected_argument == Argument.ZERO
-            else {command: arg or None}
-            if expected_argument == Argument.OPTIONAL
-            else {command: arg}
+            command if expected_argument == Argument.ZERO else {command: arg or None}
         )
         send_to_socket(message)
     else:
