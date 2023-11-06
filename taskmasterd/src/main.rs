@@ -41,7 +41,8 @@ fn parse_arguments() -> (bool, Option<String>) {
     result
 }
 
-fn run_program(monitor: &mut Monitor) {
+fn run_program(monitor: &mut Monitor, main_logger: &Logger) {
+    main_logger.log("taskmasterd launched");
     monitor.track();
     Responder::listen(monitor);
 }
@@ -65,7 +66,7 @@ fn main() {
     }
 
     if is_disabled_demonize {
-        run_program(&mut monitor);
+        run_program(&mut monitor, &logger);
     } else {
         match Daemonize::new()
             .pid_file("/var/run/server.pid")
@@ -73,7 +74,7 @@ fn main() {
             .working_directory(".")
             .start()
         {
-            Ok(_) => run_program(&mut monitor),
+            Ok(_) => run_program(&mut monitor, &logger),
             Err(e) => eprintln!("Can't daemonize: {e}. Already launched or check sudo"),
         }
     }
