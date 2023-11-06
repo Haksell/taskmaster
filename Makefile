@@ -6,6 +6,8 @@ GARBAGE := *VBox*.log
 RESET := \033[0m
 RED := \033[1m\033[31m
 
+CONFIG ?= config_files/main.yml
+
 define rm
 @if [ -e "$(1)" ]; then \
 	rm -rf "$(1)"; \
@@ -23,13 +25,13 @@ cleanvagrant:
 	vagrant destroy -f
 	$(call rm,.vagrant)
 
-server:
+daemon:
 	$(call rm,$(SOCKET))
-	cargo run --manifest-path taskmasterd/Cargo.toml
+	cargo run --manifest-path taskmasterd/Cargo.toml -- $(CONFIG)
 
-debug:
+nodaemon:
 	$(call rm,$(SOCKET))
-	cargo run --manifest-path taskmasterd/Cargo.toml -- --debug
+	cargo run --manifest-path taskmasterd/Cargo.toml -- --no-daemonize $(CONFIG)
 
 stop:
 	-@kill -TERM $$(cat $(PID_FILE) 2>/dev/null) 2>/dev/null
