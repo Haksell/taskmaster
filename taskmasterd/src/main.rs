@@ -48,14 +48,10 @@ fn run_program(monitor: &mut Monitor) {
 
 fn main() {
     let logger = Logger::new(None);
-    let mut monitor: Monitor;
     let parsed_args = parse_arguments();
     let is_disabled_demonize = parsed_args.0;
     let config_file_name = parsed_args.1;
-    if is_disabled_demonize {
-        logger.log("The logging was enabled")
-    }
-    monitor = Monitor::new();
+    let mut monitor = Monitor::new();
     if let Some(file_name) = config_file_name {
         match Configuration::from_yml(String::from(file_name)) {
             Ok(conf) => {
@@ -68,16 +64,17 @@ fn main() {
         }
     }
 
-    let daemon = Daemonize::new()
-        .pid_file("/var/run/server.pid")
-        .chown_pid_file(true)
-        .working_directory(".");
     if is_disabled_demonize {
         run_program(&mut monitor);
     } else {
-        match daemon.start() {
+        match Daemonize::new()
+            .pid_file("/var/run/server.pid")
+            .chown_pid_file(true)
+            .working_directory(".")
+            .start()
+        {
             Ok(_) => run_program(&mut monitor),
-            Err(e) => eprintln!("Can't daemonize {e}. Already launched or check sudo"),
+            Err(e) => eprintln!("Can't daemonize: {e}. Already launched or check sudo"),
         }
     }
 }

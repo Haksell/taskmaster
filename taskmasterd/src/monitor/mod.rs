@@ -234,7 +234,7 @@ impl Monitor {
     pub fn track(&self) {
         let monitor_clone = self.tasks.clone();
         let logger = Logger::new(Some("Monitor thread"));
-        logger.log("Starting track the tasks...");
+        logger.log("taskmasterd launched");
 
         let _handle = thread::spawn(move || {
             logger.log("Monitor thread has been created");
