@@ -229,12 +229,10 @@ impl Monitor {
                 ));
                 process.state = STOPPED(Some(stopped_at));
             }
-            //TODO: PROBABLY PUT ERROR REACHING FOLLOWING STATES HERE, NORMALLY IT CAN'T BE REACHED
-            STOPPED(_) => {}
-            BACKOFF => {}
-            EXITED(_) => {}
-            FATAL(_) => {}
-            UNKNOWN => {}
+            _ => logger.log_err(format!(
+                "{} died in unexpected state: {}",
+                task_name, process.state
+            )),
         }
     }
 
