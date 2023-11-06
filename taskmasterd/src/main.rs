@@ -1,8 +1,8 @@
 mod api;
 mod core;
 mod monitor;
+mod sighup_handler;
 
-use crate::api::action::Action::Start;
 use crate::api::Responder;
 use crate::core::configuration::Configuration;
 use crate::core::logger::Logger;
@@ -54,19 +54,21 @@ fn parse_arguments() -> (bool, String) {
     (should_daemonize, filename.unwrap())
 }
 
-fn run_program(monitor: &mut Monitor, main_logger: &Logger) {
-    main_logger.log("taskmasterd launched");
+fn run_program(monitor: &mut Monitor) {
     monitor.track();
     Responder::listen(monitor);
 }
 
 fn main() {
-    let a = Start(String::from("first"), Some(42));
-    println!("{:?}", serde_json::to_string(&a));
-    let (should_daemonize, config_file_name) = parse_arguments();
+    let (should_daemonize, config_path) = parse_arguments();
+
+    sighup_handler::set_sighup_handler();
+
     let logger = Logger::new(None);
-    let mut monitor = Monitor::new();
-    match Configuration::from_yml(config_file_name) {
+    logger.log(format!("taskmasterd launched (PID {})", std::process::id()));
+
+    let mut monitor = Monitor::new(config_path.clone());
+    match Configuration::from_yml(config_path) {
         Ok(conf) => {
             monitor.update_configuration(conf);
         }
@@ -83,10 +85,10 @@ fn main() {
             .working_directory(".")
             .start()
         {
-            Ok(_) => run_program(&mut monitor, &logger),
+            Ok(_) => run_program(&mut monitor),
             Err(e) => eprintln!("Can't daemonize: {e}. Already launched or check sudo"),
         }
     } else {
-        run_program(&mut monitor, &logger);
+        run_program(&mut monitor);
     }
 }

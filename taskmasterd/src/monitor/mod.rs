@@ -15,13 +15,15 @@ use std::time::{Duration, SystemTime};
 pub struct Monitor {
     tasks: Arc<Mutex<BTreeMap<String, Vec<Task>>>>,
     logger: Logger,
+    config_path: String,
 }
 
 impl Monitor {
-    pub fn new() -> Monitor {
+    pub fn new(config_path: String) -> Monitor {
         Monitor {
             tasks: Arc::new(Mutex::new(BTreeMap::new())),
             logger: Logger::new(Some("Monitor")),
+            config_path,
         }
     }
 
@@ -338,8 +340,11 @@ impl Monitor {
                 Ok(_) => String::new(),
                 Err(err_msg) => err_msg,
             },
-            Action::Update(config_path) => {
-                match Configuration::from_yml(String::from(config_path)) {
+            Action::Update(arg) => {
+                if let Some(config_path) = arg {
+                    self.config_path = config_path;
+                }
+                match Configuration::from_yml(self.config_path.clone()) {
                     Ok(conf) => self.update_configuration(conf),
                     Err(err_msg) => format!("Error! {err_msg}"),
                 }

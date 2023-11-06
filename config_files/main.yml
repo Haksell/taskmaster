@@ -51,7 +51,7 @@ task3:
   cmd: "./scripts/echo_answer_inf_loop.sh"
   num_procs: 5
   umask: 777
-  auto_start: false
+  auto_start: true
   auto_restart: unexpected
   exit_codes:
     - 0
@@ -60,5 +60,5 @@ task3:
   start_time: 10
   stop_signal: USR1
   stop_time: 10
-  stdout: /tmp/task2.stdout
-  stderr: /tmp/task2.stderr
+  stdout: /tmp/task43.stdout
+  stderr: /tmp/task43.stderr
