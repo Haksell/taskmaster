@@ -19,17 +19,16 @@ impl Logger {
         Logger { prefix }
     }
 
-    pub fn log<S: AsRef<str>>(&self, message: S) -> String {
-        let res = match self.prefix.as_ref() {
-            None => format!("{}{:?}", Logger::get_timestamp(), message.as_ref()),
-            Some(prefix) => format!(
+    pub fn log<S: AsRef<str>>(&self, message: S) -> S {
+        match self.prefix.as_ref() {
+            None => println!("{}{:?}", Logger::get_timestamp(), message.as_ref()),
+            Some(prefix) => println!(
                 "[{prefix}] {}{:?}",
                 Logger::get_timestamp(),
                 message.as_ref()
             ),
-        };
-        println!("{res}");
-        res
+        }
+        message
     }
 
     pub fn log_err<S: AsRef<str>>(&self, message: S) {

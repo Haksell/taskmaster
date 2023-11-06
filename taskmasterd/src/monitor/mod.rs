@@ -166,6 +166,8 @@ impl Monitor {
                                 result += &self
                                     .logger
                                     .log(format!("{name}#{i}: Error during the start: {e_msg}\n"));
+                            } else {
+                                result += &self.logger.log(format!("{name}#{i}: Starting...\n"))
                             }
                         } else {
                             result += &self.logger.log(format!(

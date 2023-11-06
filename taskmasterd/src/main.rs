@@ -2,6 +2,7 @@ mod api;
 mod core;
 mod monitor;
 
+use crate::api::action::Action::Start;
 use crate::api::Responder;
 use crate::core::configuration::Configuration;
 use crate::core::logger::Logger;
@@ -60,6 +61,8 @@ fn run_program(monitor: &mut Monitor, main_logger: &Logger) {
 }
 
 fn main() {
+    let a = Start(String::from("first"), Some(42));
+    println!("{:?}", serde_json::to_string(&a));
     let (should_daemonize, config_file_name) = parse_arguments();
     let logger = Logger::new(None);
     let mut monitor = Monitor::new();
