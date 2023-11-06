@@ -134,6 +134,7 @@ pub struct Configuration {
     pub start_retries: u32, //make immutable (e.g. getters?)
     pub start_time: u64,
     pub stop_signal: StopSignal,
+    #[validate(range(min = 1))]
     pub stop_time: u64,
     #[serde(deserialize_with = "deserialize_option_string_and_trim")]
     pub stdout: Option<String>,
