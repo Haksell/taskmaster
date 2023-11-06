@@ -16,7 +16,7 @@ task6:
 
 
 sleep_ls:
-  cmd: "/Users/amyroshn/Documents/rustmaster/scripts/sleep_ls.sh"
+  cmd: "./scripts/sleep_ls.sh"
   num_procs: 1
   umask: 777
   auto_start: false
@@ -32,7 +32,7 @@ sleep_ls:
   stderr: /tmp/task2.stderr
   
 show_signal:
-  cmd: "/Users/amyroshn/Documents/rustmaster/scripts/print_hello.py"
+  cmd: "./scripts/print_hello.py"
   num_procs: 1
   umask: 777
   auto_start: false
@@ -48,7 +48,7 @@ show_signal:
   stderr: /tmp/task11.stderr
 
 task3:
-  cmd: "/Users/amyroshn/Documents/rustmaster/scripts/echo_answer_inf_loop.sh"
+  cmd: "./scripts/echo_answer_inf_loop.sh"
   num_procs: 5
   umask: 777
   auto_start: false
