@@ -97,11 +97,11 @@ impl Task {
     pub fn kill(&mut self) -> Result<(), String> {
         return match &mut self.child {
             None => Err(format!(
-                "Can't find child process, probably was already stopped or not stared"
+                "Error! Can't find child process, probably was already stopped or not stared"
             )),
             Some(child) => {
                 if let Err(error) = child.kill() {
-                    return Err(format!("Can't kill child process, {error}"));
+                    return Err(format!("Error! Can't kill child process, {error}"));
                 }
                 self.state = STOPPED(Some(SystemTime::now()));
                 self.child = None;
@@ -130,7 +130,7 @@ impl Task {
     }
 
     pub fn get_json_configuration(&self) -> String {
-        serde_json::to_string_pretty(&self.configuration).expect("Serialization failed")
+        serde_json::to_string_pretty(&self.configuration).expect("Error! Serialization failed")
     }
 
     pub fn is_passed_starting_period(&self, started_at: SystemTime) -> bool {

@@ -297,7 +297,7 @@ impl Monitor {
         match action {
             Action::Status(status) => self.get_task_status(status),
             Action::Config(task_name) => match self.get_task_json_config_by_name(&task_name) {
-                None => format!("Can't find \"{task_name}\" task"),
+                None => format!("Error! Can't find \"{task_name}\" task"),
                 Some(task) => format!("{task_name}: {task}"),
             },
             Action::Shutdown => exit(0),
@@ -312,7 +312,7 @@ impl Monitor {
             Action::Update(config_path) => {
                 match Configuration::from_yml(String::from(config_path)) {
                     Ok(conf) => self.update_configuration(conf),
-                    Err(err_msg) => err_msg,
+                    Err(err_msg) => format!("Error! {err_msg}"),
                 }
             }
         }
