@@ -119,6 +119,7 @@ impl Display for State {
 pub struct Configuration {
     #[serde(deserialize_with = "deserialize_string_and_trim")]
     #[validate(length(min = 1, message = "cmd: can't be empty"))]
+    // TODO: filename: String
     pub cmd: String, //make immutable (e.g. getters?)
     #[validate(range(min = 1))]
     pub num_procs: u32,
