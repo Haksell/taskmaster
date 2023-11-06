@@ -34,12 +34,12 @@ pub enum StopSignal {
 pub enum State {
     FINISHED, // TODO: delete, here to debug
     STOPPED(Option<SystemTime>),
-    STARTING,
+    STARTING(SystemTime),
     RUNNING(SystemTime),
     BACKOFF,
     _EXITED,
     FATAL(String),
-    _UNKNOWN,
+    UNKNOWN,
 }
 
 impl Display for StopSignal {
@@ -72,7 +72,7 @@ impl Display for State {
                     format!("stopped\tat {:02}:{:02}:{:02}", hours, minutes, seconds)
                 }
             },
-            State::STARTING => "starting".to_string(),
+            State::STARTING(_) => "starting".to_string(),
             State::RUNNING(start_time) => {
                 let current_time = SystemTime::now();
                 let elapsed_time = current_time
@@ -89,7 +89,7 @@ impl Display for State {
             State::FATAL(error) => {
                 format!("fatal\t{error}")
             }
-            State::_UNKNOWN => "unknown".to_string(),
+            State::UNKNOWN => "unknown".to_string(),
         };
         write!(f, "{}", keyword)
     }
@@ -110,7 +110,7 @@ pub struct Configuration {
     pub(crate) working_dir: Option<String>,
     pub(crate) auto_start: bool,
     pub(crate) auto_restart: AutoRestart,
-    exit_codes: Vec<i32>,
+    pub exit_codes: Vec<i32>,
     pub start_retries: u32, //make immutable (e.g. getters?)
     pub(crate) start_time: u64,
     pub stop_signal: StopSignal,

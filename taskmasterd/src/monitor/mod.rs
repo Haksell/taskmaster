@@ -1,6 +1,8 @@
 use crate::api::action::Action;
-use crate::core::configuration::State::{BACKOFF, STOPPED};
-use crate::core::configuration::{AutoRestart, Configuration};
+use crate::core::configuration::State::{
+    BACKOFF, FATAL, FINISHED, RUNNING, STARTING, STOPPED, UNKNOWN, _EXITED,
+};
+use crate::core::configuration::{AutoRestart, Configuration, State};
 use crate::core::logger::Logger;
 use crate::core::task::Task;
 use std::collections::btree_map::Entry;
@@ -167,6 +169,68 @@ impl Monitor {
         }
     }
 
+    fn manage_finished_state(
+        process: &mut Task,
+        task_name: String,
+        exit_code: Option<i32>,
+        logger: &Logger,
+    ) {
+        logger.log(format!("{task_name}: exited with status {:?}", exit_code));
+        process.exit_code = exit_code;
+        process.child = None;
+        match process.state {
+            FINISHED => {}
+            STOPPED(_) => {}
+            STARTING(_) => {
+                process.state = BACKOFF;
+                logger.log(format!(
+                    "{task_name}: Exited too quickly, status changed to backoff"
+                ));
+                if process.restarts_left == 0 {
+                    process.state = FATAL(format!("exited too quickly"));
+                    logger.log(format!(
+                        "{task_name}: No restarts left, status has been changed to fatal."
+                    ))
+                } else {
+                    process.restarts_left -= 1;
+                    logger.log(format!("{task_name}: Restarting, exited too quickly"));
+                    let _ = process.run();
+                }
+            }
+            RUNNING(_) => {
+                match process.configuration.auto_restart {
+                    AutoRestart::True => {
+                        let _ = process.run();
+                        logger.log(format!("{task_name}: Relaunching..."))
+                    }
+                    AutoRestart::False => {
+                        logger.log(format!("{task_name}: auto restart disabled."));
+                        process.state = FINISHED;
+                    }
+                    AutoRestart::Unexpected => match exit_code {
+                        None => {
+                            logger.log(format!("Error! Unable to access {task_name} process exit code. Can't compare with unexpected codes list"));
+                            process.state = UNKNOWN;
+                        }
+                        Some(code) => {
+                            if process.configuration.exit_codes.contains(&code) {
+                                logger.log(format!("{task_name}: program has been finished with expected status, relaunch is not needed"));
+                                process.state = FINISHED;
+                            } else {
+                                logger.log(format!("{task_name}: {code} is not expected exit status, relaunching..."));
+                                let _ = process.run();
+                            }
+                        }
+                    },
+                }
+            }
+            BACKOFF => {}
+            _EXITED => {}
+            FATAL(_) => {}
+            UNKNOWN => {}
+        }
+    }
+
     pub fn track(&self) {
         let monitor_clone = self.tasks.clone();
         let logger = Logger::new(Some("Monitor thread"));
@@ -178,22 +242,23 @@ impl Monitor {
                 let mut tasks = monitor_clone.lock().unwrap();
                 for (name, task) in tasks.iter_mut() {
                     for (i, process) in task.iter_mut().enumerate() {
+                        if let STARTING(started_at) = process.state {
+                            if process.is_passed_starting_period(started_at) {
+                                logger.log(format!("{name} #{}: is running now", i + 1));
+                                process.state = RUNNING(started_at);
+                            }
+                        }
                         match &mut process.child {
                             Some(child) => match child.try_wait() {
                                 Ok(Some(status)) => {
-                                    logger.log(format!(
-                                        "{name} #{} exited with status {:?}",
-                                        i + 1,
-                                        status
-                                    ));
-                                    process.set_finished(status.code());
-                                    if process.state == BACKOFF {
-                                        logger.log(format!("{name} #{} stopped to quick", i + 1,));
-                                    }
+                                    Monitor::manage_finished_state(
+                                        process,
+                                        format!("{name} #{}", i + 1),
+                                        status.code(),
+                                        &logger,
+                                    );
                                 }
-                                Ok(None) => {
-                                    println!("Not finished yet")
-                                }
+                                Ok(None) => {}
                                 Err(e) => {
                                     logger.log_err(format!("Error attempting to wait: {:?}", e))
                                 }
@@ -204,19 +269,13 @@ impl Monitor {
                                 {
                                     logger.log(format!("Auto starting {name} #{}", i + 1));
                                     let _ = process.run(); // TODO: handle error
-                                } else if process.configuration.auto_restart != AutoRestart::False {
-                                    match process.configuration.auto_restart {
-                                        AutoRestart::True => {}
-                                        AutoRestart::False => {}
-                                        AutoRestart::Unexpected => {}
-                                    }
                                 }
                             }
                         }
                     }
                 }
                 drop(tasks);
-                thread::sleep(Duration::from_secs(1));
+                thread::sleep(Duration::from_millis(333));
             }
         });
     }

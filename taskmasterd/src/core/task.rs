@@ -12,17 +12,17 @@ use std::time::{Duration, SystemTime};
 //TODO: Check existing of working dir
 
 pub struct Task {
-    pub(crate) configuration: Configuration,
-    pub(crate) state: State,
-    _restarts_left: u32,
-    pub(crate) child: Option<Child>,
-    pub(crate) exit_code: Option<i32>,
+    pub configuration: Configuration,
+    pub state: State,
+    pub restarts_left: u32,
+    pub child: Option<Child>,
+    pub exit_code: Option<i32>,
 }
 
 impl Task {
     pub fn new(configuration: &Configuration) -> Task {
         Task {
-            _restarts_left: configuration.start_retries,
+            restarts_left: configuration.start_retries,
             configuration: configuration.clone(),
             state: STOPPED(None),
             exit_code: None,
@@ -77,7 +77,7 @@ impl Task {
     }
 
     pub fn run(&mut self) -> Result<(), String> {
-        self.state = STARTING;
+        self.state = STARTING(SystemTime::now());
         let stderr = self.setup_stream(&self.configuration.stderr).map_err(|e| {
             self.state = FATAL(e.to_string());
             e
@@ -138,24 +138,12 @@ impl Task {
         serde_json::to_string_pretty(&self.configuration).expect("Serialization failed")
     }
 
-    fn is_exited_too_quickly(&self, started_at: SystemTime) -> bool {
+    pub fn is_passed_starting_period(&self, started_at: SystemTime) -> bool {
         let current_time = SystemTime::now();
         let elapsed_time = current_time
             .duration_since(started_at)
             .unwrap_or(Duration::from_secs(0));
-        elapsed_time.as_secs() < self.configuration.start_time
-    }
-
-    pub fn set_finished(&mut self, exit_code: Option<i32>) {
-        let old_state = self.state.clone();
-        self.state = FINISHED;
-        if let RUNNING(started_time) = old_state {
-            if self.is_exited_too_quickly(started_time) {
-                self.state = BACKOFF;
-            }
-        }
-        self.exit_code = exit_code;
-        self.child = None;
+        elapsed_time.as_secs() >= self.configuration.start_time
     }
 }
 
@@ -165,7 +153,7 @@ impl Display for Task {
         match self.state {
             FINISHED => {}
             STOPPED(_) => {}
-            STARTING => {}
+            STARTING(_) => {}
             RUNNING(_) => {
                 let pid = match self.child.as_ref() {
                     None => 0,
@@ -176,7 +164,7 @@ impl Display for Task {
             BACKOFF => result += "\tExited too quickly",
             _EXITED => {}
             FATAL(_) => {}
-            _UNKNOWN => {}
+            UNKNOWN => {}
         };
         write!(f, "{result}")
     }
