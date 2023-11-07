@@ -1,7 +1,5 @@
 use crate::action::Action;
-use crate::configuration::State::{
-    BACKOFF, EXITED, FATAL, RUNNING, STARTING, STOPPED, STOPPING, UNKNOWN,
-};
+use crate::configuration::State::{BACKOFF, EXITED, FATAL, RUNNING, STARTING, STOPPED, STOPPING};
 use crate::configuration::{AutoRestart, Configuration};
 use crate::logger::Logger;
 use crate::remove_and_exit;
@@ -287,15 +285,17 @@ impl Monitor {
                     }
                     AutoRestart::Unexpected => match exit_code {
                         None => {
-                            logger.sth_log(format!("Unable to access {task_name} process exit code. Can't compare with unexpected codes list"));
-                            process.state = UNKNOWN;
+                            logger.sth_log(format!(
+                                "{task_name}: unable to access exit status. Relaunching..."
+                            ));
+                            let _ = process.run();
                         }
                         Some(code) => {
                             if process.configuration.exit_codes.contains(&code) {
                                 logger.sth_log(format!("{task_name}: program has been finished with expected status, relaunch is not needed"));
                                 process.state = EXITED(SystemTime::now());
                             } else {
-                                logger.sth_log(format!("{task_name}: {code} is not expected exit status, relaunching..."));
+                                logger.sth_log(format!("{task_name}: {code} is not expected exit status. Relaunching..."));
                                 let _ = process.run();
                             }
                         }

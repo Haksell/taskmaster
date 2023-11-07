@@ -188,7 +188,6 @@ impl Display for Task {
             BACKOFF => result += "\tExited too quickly",
             EXITED(_) => {}
             FATAL(_) => {}
-            UNKNOWN => {}
         };
         write!(f, "{result}")
     }

@@ -38,7 +38,6 @@ pub enum State {
     STOPPING(SystemTime),
     EXITED(SystemTime),
     FATAL(String),
-    UNKNOWN,
 }
 
 impl Display for StopSignal {
@@ -111,7 +110,6 @@ impl Display for State {
             State::FATAL(error) => {
                 format!("fatal ({error})")
             }
-            State::UNKNOWN => "unknown".to_string(),
             State::STOPPING(_) => "stopping".to_string(),
         };
         write!(f, "{}", keyword)
