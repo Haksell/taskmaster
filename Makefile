@@ -1,5 +1,5 @@
-SOCK_FILE := /run/taskmaster.sock
-PID_FILE := /run/taskmasterd.pid
+SOCK_FILE := /var/run/taskmaster.sock
+PID_FILE := /var/run/taskmasterd.pid
 
 GARBAGE := *VBox*.log
 

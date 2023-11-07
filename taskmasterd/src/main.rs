@@ -10,8 +10,8 @@ use crate::monitor::Monitor;
 use daemonize::Daemonize;
 use std::env;
 
-pub const UNIX_DOMAIN_SOCKET_PATH: &'static str = "/run/taskmaster.sock";
-pub const PID_FILE_PATH: &'static str = "/run/taskmasterd.pid";
+pub const UNIX_DOMAIN_SOCKET_PATH: &'static str = "/var/run/taskmaster.sock";
+pub const PID_FILE_PATH: &'static str = "/var/run/taskmasterd.pid";
 
 const HELP_MESSAGE: &str = "Options are:\n\t--help: Show help info\
     \n\t--no-daemon: Disables daemon mode\
@@ -96,6 +96,8 @@ fn main() {
             .pid_file(PID_FILE_PATH)
             .chown_pid_file(true)
             .working_directory(".")
+            .user("nobody")
+            .group("daemon")
             .start()
         {
             Ok(_) => run_program(&mut monitor),
