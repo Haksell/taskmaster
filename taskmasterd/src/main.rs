@@ -61,10 +61,10 @@ fn parse_arguments() -> (bool, String) {
             }
         }
     }
-    if filename.is_none() {
-        error_exit!("Error: No configuration file given");
+    match filename {
+        Some(filename) => (should_daemonize, filename),
+        None => error_exit!("Error: No configuration file given"),
     }
-    (should_daemonize, filename.unwrap())
 }
 
 fn run_program(monitor: &mut Monitor) {
