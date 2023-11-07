@@ -1,6 +1,7 @@
 extern crate libc;
-use crate::core::configuration::State::*;
-use crate::core::configuration::{Configuration, State};
+
+use crate::configuration::State::*;
+use crate::configuration::{Configuration, State};
 use libc::{mode_t, pid_t};
 use std::fmt::{Display, Formatter};
 use std::fs::{File, OpenOptions};

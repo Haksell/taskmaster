@@ -1,11 +1,11 @@
-use crate::api::action::Action;
-use crate::core::configuration::State::{
+use crate::action::Action;
+use crate::configuration::State::{
     BACKOFF, EXITED, FATAL, RUNNING, STARTING, STOPPED, STOPPING, UNKNOWN,
 };
-use crate::core::configuration::{AutoRestart, Configuration};
-use crate::core::logger::Logger;
-use crate::core::task::Task;
+use crate::configuration::{AutoRestart, Configuration};
+use crate::logger::Logger;
 use crate::remove_and_exit;
+use crate::task::Task;
 use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -353,7 +353,7 @@ impl Monitor {
                 }
                 drop(logger);
                 drop(tasks);
-                thread::sleep(Duration::from_millis(333));
+                thread::sleep(Duration::from_millis(100));
             }
         });
     }

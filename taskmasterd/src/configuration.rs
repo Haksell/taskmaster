@@ -1,4 +1,4 @@
-use crate::core::logger::Logger;
+use crate::logger::Logger;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::BTreeMap;
 use std::fmt::{Display, Formatter};

@@ -1,13 +1,16 @@
-mod api;
-mod core;
+mod action;
+mod configuration;
+mod logger;
 mod monitor;
+mod responder;
 mod sighup_handler;
+mod task;
 
-use crate::core::configuration::Configuration;
-use crate::core::logger::Logger;
-use crate::monitor::Monitor;
-use api::responder::Responder;
+use configuration::Configuration;
 use daemonize::Daemonize;
+use logger::Logger;
+use monitor::Monitor;
+use responder::Responder;
 use std::env;
 use std::sync::{Arc, Mutex};
 

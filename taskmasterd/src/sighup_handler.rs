@@ -1,9 +1,8 @@
+use crate::action::Action;
+use crate::{remove_and_exit, UNIX_DOMAIN_SOCKET_PATH};
 use libc::{sighandler_t, signal, SIGHUP};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
-
-use crate::api::action::Action;
-use crate::{remove_and_exit, UNIX_DOMAIN_SOCKET_PATH};
 
 static SIGHUP_RECEIVED: AtomicBool = AtomicBool::new(false);
 
