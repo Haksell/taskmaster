@@ -4,9 +4,9 @@ use serde::{Deserialize, Serialize};
 pub enum Action {
     Config(String),
     Maintail(Option<usize>),
-    Update(Option<String>),
-    Status(Option<String>),
-    Start(Option<(String, Option<usize>)>),
-    Stop(Option<(String, Option<usize>)>),
     Shutdown,
+    Start(Option<(String, Option<usize>)>),
+    Status(Option<String>),
+    Stop(Option<(String, Option<usize>)>),
+    Update(Option<String>),
 }
