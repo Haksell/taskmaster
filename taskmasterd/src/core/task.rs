@@ -100,7 +100,7 @@ impl Task {
     pub fn kill(&mut self) -> Result<(), String> {
         return match &mut self.child {
             None => Err(format!(
-                "Error! Can't find child process, probably was already stopped or not stared"
+                "Error! Can't find child process, probably was already stopped or not started"
             )),
             Some(child) => {
                 if let Err(error) = child.kill() {
@@ -116,7 +116,7 @@ impl Task {
     pub fn stop(&mut self) -> Result<(), String> {
         return match &mut self.child {
             None => Err(format!(
-                "Error! Can't find child process, probably was already stopped or not stared"
+                "Error! Can't find child process, probably was already stopped or not started"
             )),
             Some(child) => {
                 unsafe {
