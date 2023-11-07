@@ -87,7 +87,7 @@ make debug
 #### manually
 
 ```bash
-sudo kill -TERM $(sudo cat /var/run/server.pid); sudo rm -rf /var/run/server.pid
+sudo kill -TERM $(sudo cat /var/run/taskmaster.pid); sudo rm -rf /var/run/taskmaster.pid
 ```
 
 #### using Makefile

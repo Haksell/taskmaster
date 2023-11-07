@@ -82,7 +82,7 @@ fn main() {
 
     if should_daemonize {
         match Daemonize::new()
-            .pid_file("/var/run/server.pid")
+            .pid_file("/var/run/taskmaster.pid")
             .chown_pid_file(true)
             .working_directory(".")
             .start()
