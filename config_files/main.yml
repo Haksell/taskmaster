@@ -17,7 +17,7 @@ task6:
 
 sleep_ls:
   cmd: "./scripts/sleep_ls.sh"
-  num_procs: 1
+  num_procs: 2
   umask: 777
   auto_start: false
   auto_restart: unexpected

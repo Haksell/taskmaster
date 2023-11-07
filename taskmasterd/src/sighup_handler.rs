@@ -29,7 +29,7 @@ pub fn set_sighup_handler() {
             }
             SIGHUP_RECEIVED.store(false, Ordering::SeqCst);
         }
-        std::thread::sleep(std::time::Duration::from_millis(100));
+        thread::sleep(std::time::Duration::from_millis(100));
     });
 
     unsafe {
