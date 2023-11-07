@@ -6,6 +6,7 @@ import json
 import os
 import socket
 import readline
+import signal
 
 BUFFER_SIZE = 1024
 INTRO_CHAR = "="
@@ -22,26 +23,29 @@ PROMPT_END_IGNORE = "\002"
 
 class Argument(Enum):
     ZERO = auto()
-    OPTIONAL = auto()
+    OPTIONAL_STRING = auto()
     OPTIONAL_POSITIVE = auto()
     ONE = auto()
     ZERO_TO_TWO = auto()
+    SIGNAL = auto()
 
 
 CHECK_ARGC = {
     Argument.ZERO: lambda argc: argc == 0,
-    Argument.OPTIONAL: lambda argc: argc <= 1,
+    Argument.OPTIONAL_STRING: lambda argc: argc <= 1,
     Argument.OPTIONAL_POSITIVE: lambda argc: argc <= 1,
     Argument.ONE: lambda argc: argc == 1,
     Argument.ZERO_TO_TWO: lambda argc: argc <= 2,
+    Argument.SIGNAL: lambda argc: argc == 2,
 }
 
 ARGUMENT_STRING = {
     Argument.ZERO: "doesn't accept an argument",
-    Argument.OPTIONAL: "accepts zero or one argument",
+    Argument.OPTIONAL_STRING: "accepts zero or one argument",
     Argument.OPTIONAL_POSITIVE: "accepts zero or one unsigned integer argument",
     Argument.ONE: "requires exactly one argument",
     Argument.ZERO_TO_TWO: "requires zero, one or two arguments",
+    Argument.SIGNAL: "requires a signal number or name, followed by a task name",
 }
 
 
@@ -108,6 +112,28 @@ def handle_optional_positive(command, argc, argv):
         return {command: val}
 
 
+def handle_signal_arguments(command, argv):
+    def get_signum(sigstr):
+        try:
+            n = int(sigstr)
+            if 0 <= n <= 255:
+                return n
+        except ValueError:
+            sigstr = sigstr.upper()
+            if not sigstr.startswith("SIG"):
+                sigstr = "SIG" + sigstr
+            try:
+                return getattr(signal, sigstr).value
+            except AttributeError:
+                pass
+
+    signum = get_signum(argv[0])
+    if signum is None:
+        print(f'"{argv[0]}" is not a valid signal')
+        return None
+    return {command: [signum, argv[1]]}
+
+
 def process_cmd(arg, expected_argument):
     current_frame = inspect.currentframe()
     calling_frame = current_frame.f_back
@@ -123,6 +149,8 @@ def process_cmd(arg, expected_argument):
             if expected_argument == Argument.ZERO_TO_TWO
             else handle_optional_positive(command, argc, argv)
             if expected_argument == Argument.OPTIONAL_POSITIVE
+            else handle_signal_arguments(command, argv)
+            if expected_argument == Argument.SIGNAL
             else {command: arg or None}
         )
         if message is None:
@@ -192,6 +220,10 @@ class TaskMasterShell(cmd.Cmd):
         """shutdown : Shut the remote taskmasterd down."""
         process_cmd(arg, Argument.ZERO)
 
+    def do_signal(self, arg):
+        """signal <signum or signame> <taskname> : Signal a process"""
+        process_cmd(arg, Argument.SIGNAL)
+
     def do_start(self, arg):
         """start <name> : Start a process"""
         process_cmd(arg, Argument.ZERO_TO_TWO)
@@ -202,11 +234,11 @@ class TaskMasterShell(cmd.Cmd):
 
     def do_status(self, arg):
         "status        : Get all process status info\nstatus <name> : Get status for a single process"
-        process_cmd(arg, Argument.OPTIONAL)
+        process_cmd(arg, Argument.OPTIONAL_STRING)
 
     def do_update(self, arg):
         """update <filename> : Reload the config file and add/remove tasks as necessary"""
-        process_cmd(arg, Argument.OPTIONAL)
+        process_cmd(arg, Argument.OPTIONAL_STRING)
 
     def complete_update(self, text, line, *_):
         mline = line.partition(" ")[2]

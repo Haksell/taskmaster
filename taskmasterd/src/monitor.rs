@@ -360,12 +360,21 @@ impl Monitor {
 
     pub fn answer(&mut self, action: Action) -> String {
         match action {
-            Action::Status(status) => self.get_task_status(status),
             Action::Config(task_name) => match self.get_task_json_config_by_name(&task_name) {
                 None => format!("Can't find \"{task_name}\" task"),
                 Some(task) => format!("{task_name}: {task}"),
             },
+            Action::Maintail(arg) => self
+                .logger
+                .lock()
+                .unwrap()
+                .get_history(match arg {
+                    Some(num_lines) => num_lines,
+                    None => 10,
+                })
+                .join(""),
             Action::Shutdown => remove_and_exit(0),
+            Action::Signal(signum, task_name) => "signalled".to_string(),
             Action::Start(arg) => match arg {
                 Some((task_name, num)) => self.start_task(&task_name, &num),
                 None => {
@@ -382,6 +391,7 @@ impl Monitor {
                         .collect()
                 }
             },
+            Action::Status(status) => self.get_task_status(status),
             Action::Stop(arg) => match arg {
                 Some((task_name, num)) => self.stop_task(&task_name, &num),
                 None => {
@@ -407,15 +417,6 @@ impl Monitor {
                     Err(err_msg) => format!("{err_msg}"),
                 }
             }
-            Action::Maintail(arg) => self
-                .logger
-                .lock()
-                .unwrap()
-                .get_history(match arg {
-                    Some(num_lines) => num_lines,
-                    None => 10,
-                })
-                .join(""),
         }
     }
 }

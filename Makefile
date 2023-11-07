@@ -1,5 +1,6 @@
 SOCK_FILE := /tmp/taskmaster.sock
 PID_FILE := /tmp/taskmasterd.pid
+LOG_FILE := /tmp/taskmasterd.log
 
 GARBAGE := *VBox*.log
 
@@ -45,5 +46,6 @@ client:
 clean: stop
 	@rm -rf $(GARBAGE)
 	@rm -rf $(SOCK_FILE)
+	@rm -rf $(LOG_FILE)
 	$(call rm,target)
 	@rm -rf /tmp/taskmaster/*
