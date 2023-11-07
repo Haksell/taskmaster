@@ -5,9 +5,9 @@ use crate::core::configuration::State::{
 use crate::core::configuration::{AutoRestart, Configuration};
 use crate::core::logger::Logger;
 use crate::core::task::Task;
+use crate::remove_and_exit;
 use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
-use std::process::exit;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, SystemTime};
@@ -366,7 +366,7 @@ impl Monitor {
                 None => format!("Can't find \"{task_name}\" task"),
                 Some(task) => format!("{task_name}: {task}"),
             },
-            Action::Shutdown => exit(0),
+            Action::Shutdown => remove_and_exit(0),
             Action::Start(arg) => match arg {
                 Some((task_name, num)) => self.start_task(&task_name, &num),
                 None => {

@@ -3,7 +3,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 
 use crate::api::action::Action;
-use crate::UNIX_DOMAIN_SOCKET_PATH;
+use crate::{remove_and_exit, UNIX_DOMAIN_SOCKET_PATH};
 
 static SIGHUP_RECEIVED: AtomicBool = AtomicBool::new(false);
 
@@ -35,7 +35,7 @@ pub fn set_sighup_handler() {
     unsafe {
         if signal(SIGHUP, handle_sighup as sighandler_t) == libc::SIG_ERR {
             eprintln!("Error setting up signal handler for SIGHUP");
-            std::process::exit(1);
+            remove_and_exit(1);
         }
     }
 }

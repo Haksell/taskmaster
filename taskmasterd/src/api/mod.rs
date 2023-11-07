@@ -1,11 +1,12 @@
 use crate::api::action::Action;
 use crate::core::logger::Logger;
 use crate::monitor::Monitor;
-use crate::UNIX_DOMAIN_SOCKET_PATH;
+use crate::{remove_and_exit, UNIX_DOMAIN_SOCKET_PATH};
 use std::borrow::Cow;
+use std::fs;
 use std::io::{Read, Write};
+use std::os::unix::fs::PermissionsExt;
 use std::os::unix::net::{UnixListener, UnixStream};
-use std::process::exit;
 
 pub mod action;
 
@@ -20,6 +21,14 @@ impl<'a> Responder<'a> {
         let logger = Logger::new(Some("Responder"));
         return match UnixListener::bind(UNIX_DOMAIN_SOCKET_PATH) {
             Ok(stream) => {
+                if let Err(_) =
+                    fs::set_permissions(UNIX_DOMAIN_SOCKET_PATH, fs::Permissions::from_mode(0o666))
+                {
+                    logger.log_err(format!(
+                        "Can't change permissions of \"{UNIX_DOMAIN_SOCKET_PATH}\""
+                    ));
+                    remove_and_exit(2);
+                }
                 logger.log(format!(
                     "Socket was successfully created: {UNIX_DOMAIN_SOCKET_PATH}"
                 ));
@@ -27,7 +36,7 @@ impl<'a> Responder<'a> {
             }
             Err(_) => {
                 logger.log_err(format!("Can't bind socket \"{UNIX_DOMAIN_SOCKET_PATH}\""));
-                exit(2);
+                remove_and_exit(2);
             }
         };
     }

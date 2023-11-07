@@ -11,8 +11,8 @@ task6:
   start_time: 0
   stop_signal: USR1
   stop_time: 1
-  stdout: /tmp/task2.stdout
-  stderr: /tmp/task2.stderr
+  stdout: /tmp/taskmaster/task2.stdout
+  stderr: /tmp/taskmaster/task2.stderr
 
 
 sleep_ls:
@@ -28,8 +28,8 @@ sleep_ls:
   start_time: 1
   stop_signal: USR1
   stop_time: 5
-  stdout: /tmp/task2.stdout
-  stderr: /tmp/task2.stderr
+  stdout: /tmp/taskmaster/task2.stdout
+  stderr: /tmp/taskmaster/task2.stderr
   
 show_signal:
   cmd: "./scripts/catch_sighup.py"
@@ -44,8 +44,8 @@ show_signal:
   start_time: 0
   stop_signal: HUP
   stop_time: 15
-  stdout: /tmp/task100.stdout
-  stderr: /tmp/task100.stderr
+  stdout: /tmp/taskmaster/task100.stdout
+  stderr: /tmp/taskmaster/task100.stderr
 
 task3:
   cmd: "./scripts/echo_answer_inf_loop.sh"
@@ -60,5 +60,5 @@ task3:
   start_time: 10
   stop_signal: USR1
   stop_time: 10
-  stdout: /tmp/task44.stdout
-  stderr: /tmp/task44.stderr
+  stdout: /tmp/taskmaster/task44.stdout
+  stderr: /tmp/taskmaster/task44.stderr

@@ -10,7 +10,8 @@ use crate::monitor::Monitor;
 use daemonize::Daemonize;
 use std::env;
 
-pub const UNIX_DOMAIN_SOCKET_PATH: &str = "/tmp/.taskmaster.sock";
+pub const UNIX_DOMAIN_SOCKET_PATH: &'static str = "/run/taskmaster.sock";
+pub const PID_FILE_PATH: &'static str = "/run/taskmasterd.pid";
 
 const HELP_MESSAGE: &str = "Options are:\n\t--help: Show help info\
     \n\t--no-daemon: Disables daemon mode\
@@ -20,9 +21,19 @@ macro_rules! error_exit {
     ($($arg:tt)*) => {
         {
             eprintln!($($arg)*);
-            std::process::exit(2);
+            remove_and_exit(2);
         }
     };
+}
+
+fn remove_files() {
+    let _ = std::fs::remove_file(UNIX_DOMAIN_SOCKET_PATH);
+    let _ = std::fs::remove_file(PID_FILE_PATH);
+}
+
+pub fn remove_and_exit(exit_code: i32) -> ! {
+    remove_files();
+    std::process::exit(exit_code);
 }
 
 fn parse_arguments() -> (bool, String) {
@@ -32,7 +43,7 @@ fn parse_arguments() -> (bool, String) {
         match arg.as_str() {
             "--help" => {
                 println!("{}", HELP_MESSAGE);
-                std::process::exit(0);
+                remove_and_exit(0);
             }
             "--no-daemonize" => should_daemonize = false,
             _ => {
@@ -62,8 +73,8 @@ fn run_program(monitor: &mut Monitor) {
 }
 
 fn main() {
+    remove_files();
     let (should_daemonize, config_path) = parse_arguments();
-
     sighup_handler::set_sighup_handler();
 
     let logger = Logger::new(None);
@@ -76,13 +87,13 @@ fn main() {
         }
         Err(err_msg) => {
             logger.log_err(err_msg);
-            std::process::exit(2);
+            remove_and_exit(2);
         }
     }
 
     if should_daemonize {
         match Daemonize::new()
-            .pid_file("/var/run/taskmaster.pid")
+            .pid_file("/run/taskmasterd.pid")
             .chown_pid_file(true)
             .working_directory(".")
             .start()
@@ -93,4 +104,5 @@ fn main() {
     } else {
         run_program(&mut monitor);
     }
+    remove_files();
 }

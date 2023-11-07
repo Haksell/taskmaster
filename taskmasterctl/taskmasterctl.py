@@ -9,7 +9,7 @@ import readline
 
 BUFFER_SIZE = 1024
 INTRO_CHAR = "="
-UNIX_DOMAIN_SOCKET_PATH = "/tmp/.taskmaster.sock"
+UNIX_DOMAIN_SOCKET_PATH = "/run/taskmaster.sock"
 
 RESET = "\033[0m"
 BOLD = "\033[1m"
@@ -24,7 +24,7 @@ class Argument(Enum):
     ZERO = auto()
     OPTIONAL = auto()
     ONE = auto()
-    ZERO_TO_TWO = auto()  # TODO: ZERO_OR_TWO
+    ZERO_TO_TWO = auto()
 
 
 CHECK_ARGC = {
@@ -71,7 +71,7 @@ def send_to_socket(message):
             response = b"".join(response_parts).decode().rstrip()
             if response:
                 print(response)
-            elif message == "Shutdown":
+            elif message == '"Shutdown"':
                 print("Shutdown successful")
     except Exception as e:
         print(f"Unknown error: {e}")
