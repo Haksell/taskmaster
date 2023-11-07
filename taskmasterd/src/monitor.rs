@@ -237,7 +237,7 @@ impl Monitor {
         let mut tasks = self.tasks.lock().unwrap();
         let mut logger = self.logger.lock().unwrap();
         match tasks.get_mut(name) {
-            Some(task_group) => task_group.iter_mut().enumerate().map(|(i, process)|
+            Some(task_group) => task_group.iter().enumerate().map(|(i, process)|
                 logger.monit_log(if process.signal(signum) {
                     format!("{name}[{i}] received signal {signum}\n")
                 } else {

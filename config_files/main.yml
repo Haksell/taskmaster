@@ -32,7 +32,7 @@ sleep_ls:
   stderr: /tmp/taskmaster/task2.stderr
   
 show_signal:
-  cmd: "./scripts/catch_sighup.py"
+  cmd: "./scripts/show_signal.py"
   num_procs: 6
   umask: 777
   auto_start: false
@@ -44,8 +44,8 @@ show_signal:
   start_time: 0
   stop_signal: HUP
   stop_time: 15
-  stdout: /tmp/taskmaster/task100.stdout
-  stderr: /tmp/taskmaster/task100.stderr
+  stdout: /tmp/taskmaster/show_signal.stdout
+  stderr: /tmp/taskmaster/show_signal.stderr
 
 task3:
   cmd: "./scripts/echo_answer_inf_loop.sh"

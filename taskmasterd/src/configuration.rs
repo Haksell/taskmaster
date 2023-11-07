@@ -86,7 +86,7 @@ impl Display for State {
             State::STOPPED(stopped_at) => match stopped_at {
                 None => "stopped".to_string(),
                 Some(stopped_at) => {
-                    format!("stopped\t{}", State::at(stopped_at))
+                    format!("stopped {}", State::at(stopped_at))
                 }
             },
             State::STARTING(_) => "starting".to_string(),
@@ -99,14 +99,17 @@ impl Display for State {
                 let hours = elapsed_time_seconds / 3600;
                 let minutes = (elapsed_time_seconds % 3600) / 60;
                 let seconds = elapsed_time_seconds % 60;
-                format!("running\tuptime {:02}:{:02}:{:02}", hours, minutes, seconds)
+                format!(
+                    "running (uptime {:02}:{:02}:{:02})",
+                    hours, minutes, seconds
+                )
             }
             State::BACKOFF => "backoff".to_string(),
             State::EXITED(exited_at) => {
-                format!("exited\t{}", State::at(exited_at))
+                format!("exited {}", State::at(exited_at))
             }
             State::FATAL(error) => {
-                format!("fatal\t{error}")
+                format!("fatal ({error})")
             }
             State::UNKNOWN => "unknown".to_string(),
             State::STOPPING(_) => "stopping".to_string(),

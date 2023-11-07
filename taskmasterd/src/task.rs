@@ -131,8 +131,8 @@ impl Task {
         };
     }
 
-    pub fn signal(&mut self, signum: u8) -> bool {
-        match &mut self.child {
+    pub fn signal(&self, signum: u8) -> bool {
+        match &self.child {
             None => false,
             Some(child) => {
                 unsafe {
