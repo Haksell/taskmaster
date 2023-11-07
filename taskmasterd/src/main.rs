@@ -3,10 +3,10 @@ mod core;
 mod monitor;
 mod sighup_handler;
 
-use crate::api::Responder;
 use crate::core::configuration::Configuration;
 use crate::core::logger::Logger;
 use crate::monitor::Monitor;
+use api::responder::Responder;
 use daemonize::Daemonize;
 use std::env;
 use std::sync::{Arc, Mutex};
