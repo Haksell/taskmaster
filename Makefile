@@ -1,4 +1,4 @@
-SOCKET := /tmp/.unixdomain.sock
+SOCKET := /tmp/.taskmaster.sock
 PID_FILE := /var/run/server.pid
 
 GARBAGE := *VBox*.log

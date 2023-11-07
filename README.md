@@ -41,16 +41,16 @@ To launch it not deamozied look:
 #### manually without config on the start
 
 ```bash
-sudo rm -rf .unixdomain.sock && sudo cargo run --bin server
+sudo rm -rf .taskmaster.sock && sudo cargo run --bin server
 ```
 
 #### manually with config on the start
 
 ```bash
-sudo rm -rf .unixdomain.sock && sudo cargo run --bin server /tmp/path/to/config.yml
+sudo rm -rf .taskmaster.sock && sudo cargo run --bin server /tmp/path/to/config.yml
 ```
 
-! **rm -rf .unixdomain.sock** is here to remove created unix domain socket (will be handled after implementing signals)
+! **rm -rf .taskmaster.sock** is here to remove created unix domain socket (will be handled after implementing signals)
 
 #### using Makefile
 
@@ -65,13 +65,13 @@ make server
 #### manually without config on the start
 
 ```bash
-sudo rm -rf .unixdomain.sock && sudo cargo run --bin server -- --debug
+sudo rm -rf .taskmaster.sock && sudo cargo run --bin server -- --debug
 ```
 
 #### manually with config on the start
 
 ```bash
-sudo rm -rf .unixdomain.sock && sudo cargo run --bin server /tmp/path/to/config.yml --debug
+sudo rm -rf .taskmaster.sock && sudo cargo run --bin server /tmp/path/to/config.yml --debug
 ```
 
 #### using Makefile

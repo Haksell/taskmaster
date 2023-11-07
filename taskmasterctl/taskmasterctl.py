@@ -9,7 +9,7 @@ import readline
 
 BUFFER_SIZE = 1024
 INTRO_CHAR = "="
-UNIX_DOMAIN_SOCKET_PATH = "/tmp/.unixdomain.sock"
+UNIX_DOMAIN_SOCKET_PATH = "/tmp/.taskmaster.sock"
 
 RESET = "\033[0m"
 BOLD = "\033[1m"

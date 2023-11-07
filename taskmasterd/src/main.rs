@@ -10,7 +10,7 @@ use crate::monitor::Monitor;
 use daemonize::Daemonize;
 use std::env;
 
-pub const UNIX_DOMAIN_SOCKET_PATH: &str = "/tmp/.unixdomain.sock";
+pub const UNIX_DOMAIN_SOCKET_PATH: &str = "/tmp/.taskmaster.sock";
 
 const HELP_MESSAGE: &str = "Options are:\n\t--help: Show help info\
     \n\t--no-daemon: Disables daemon mode\
