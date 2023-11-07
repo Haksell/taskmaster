@@ -10,6 +10,8 @@ use crate::monitor::Monitor;
 use daemonize::Daemonize;
 use std::env;
 
+pub const UNIX_DOMAIN_SOCKET_PATH: &str = "/tmp/.unixdomain.sock";
+
 const HELP_MESSAGE: &str = "Options are:\n\t--help: Show help info\
     \n\t--no-daemon: Disables daemon mode\
     \n\t<path_to_config_file>: Starts server with a configuration";

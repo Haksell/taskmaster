@@ -3,6 +3,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 
 use crate::api::action::Action;
+use crate::UNIX_DOMAIN_SOCKET_PATH;
 
 static SIGHUP_RECEIVED: AtomicBool = AtomicBool::new(false);
 
@@ -14,7 +15,7 @@ fn send_update_message() -> Result<(), Box<dyn std::error::Error>> {
     use std::io::prelude::*;
     use std::os::unix::net::UnixStream;
 
-    let mut stream = UnixStream::connect("/tmp/.unixdomain.sock")?;
+    let mut stream = UnixStream::connect(UNIX_DOMAIN_SOCKET_PATH)?;
     let serialized_action = serde_json::to_string(&Action::Update(None))?;
     stream.write_all(serialized_action.as_bytes())?;
     Ok(())

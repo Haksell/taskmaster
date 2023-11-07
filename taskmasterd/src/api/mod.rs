@@ -1,14 +1,13 @@
 use crate::api::action::Action;
 use crate::core::logger::Logger;
 use crate::monitor::Monitor;
+use crate::UNIX_DOMAIN_SOCKET_PATH;
 use std::borrow::Cow;
 use std::io::{Read, Write};
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::process::exit;
 
 pub mod action;
-
-pub const UNIX_DOMAIN_SOCKET_PATH: &str = "/tmp/.unixdomain.sock";
 
 pub struct Responder<'a> {
     logger: &'a Logger,

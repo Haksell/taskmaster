@@ -9,7 +9,7 @@ import readline
 
 BUFFER_SIZE = 1024
 INTRO_CHAR = "="
-UNIX_DOMAIN_SOCKET = "/tmp/.unixdomain.sock"
+UNIX_DOMAIN_SOCKET_PATH = "/tmp/.unixdomain.sock"
 
 RESET = "\033[0m"
 BOLD = "\033[1m"
@@ -46,9 +46,9 @@ def send_to_socket(message):
     try:
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
             try:
-                s.connect(UNIX_DOMAIN_SOCKET)
+                s.connect(UNIX_DOMAIN_SOCKET_PATH)
             except FileNotFoundError:
-                print(f"Socket {UNIX_DOMAIN_SOCKET} not found")
+                print(f"Socket {UNIX_DOMAIN_SOCKET_PATH} not found")
                 return
             except Exception as e:
                 print(f"Failed to connect to taskmasterd: {e}")
