@@ -8,7 +8,6 @@ use crate::core::task::Task;
 use crate::remove_and_exit;
 use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
-use std::process::exit;
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread;
 use std::time::{Duration, SystemTime};

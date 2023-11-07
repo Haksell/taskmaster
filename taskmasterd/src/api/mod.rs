@@ -7,7 +7,6 @@ use std::fs;
 use std::io::{Read, Write};
 use std::os::unix::fs::PermissionsExt;
 use std::os::unix::net::{UnixListener, UnixStream};
-use std::process::exit;
 use std::sync::{Arc, Mutex};
 
 pub mod action;
