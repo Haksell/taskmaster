@@ -70,8 +70,9 @@ impl Task {
                 Ok(())
             }
             Err(err) => {
-                self.state = FATAL(err.to_string());
-                Err(err.to_string())
+                let err_msg = format!("Command: {}", err.to_string());
+                self.state = FATAL(err_msg.clone());
+                Err(err_msg)
             }
         }
     }
@@ -79,12 +80,14 @@ impl Task {
     pub fn run(&mut self) -> Result<(), String> {
         self.state = STARTING(SystemTime::now());
         let stderr = self.setup_stream(&self.configuration.stderr).map_err(|e| {
-            self.state = FATAL(e.to_string());
-            e
+            let error_msg = format!("Stderr log file: {}", e);
+            self.state = FATAL(error_msg.clone());
+            error_msg
         })?;
         let stdout = self.setup_stream(&self.configuration.stdout).map_err(|e| {
-            self.state = FATAL(e.to_string());
-            e
+            let error_msg = format!("Stdout log file: {}", e);
+            self.state = FATAL(error_msg.clone());
+            error_msg
         })?;
 
         unsafe {
@@ -111,7 +114,6 @@ impl Task {
     }
 
     pub fn stop(&mut self) -> Result<(), String> {
-        //TODO: IF CURRENT STATE IS ALREADY STOPPING - RETURN MESSAGE
         return match &mut self.child {
             None => Err(format!(
                 "Error! Can't find child process, probably was already stopped or not stared"

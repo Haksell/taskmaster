@@ -345,7 +345,9 @@ impl Monitor {
                                     && process.state == STOPPED(None)
                                 {
                                     logger.log(format!("Auto starting {name} #{i}"));
-                                    let _ = process.run(); // TODO: handle error
+                                    if let Err(error_msg) = process.run() {
+                                        logger.log(format!("{name}#{i}: {error_msg}"));
+                                    }
                                 }
                             }
                         }
