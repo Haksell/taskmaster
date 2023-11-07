@@ -304,7 +304,7 @@ impl Monitor {
         let monitor_clone = self.tasks.clone();
         let logger_clone = self.logger.clone();
 
-        let _handle = thread::spawn(move || {
+        thread::spawn(move || {
             loop {
                 let mut tasks = monitor_clone.lock().unwrap();
                 let mut logger = logger_clone.lock().unwrap();
