@@ -5,6 +5,7 @@ use crate::core::configuration::State::{
 use crate::core::configuration::{AutoRestart, Configuration};
 use crate::core::logger::Logger;
 use crate::core::task::Task;
+use crate::remove_and_exit;
 use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
 use std::process::exit;
@@ -99,7 +100,7 @@ impl Monitor {
             Some(ref task_name) => match tasks.get(task_name.as_str()) {
                 None => {
                     logger.monit_log(format!("Task status: {task_name} wasn't found"));
-                    format!("Error! Can't find \"{task_name}\" task")
+                    format!("Can't find \"{task_name}\" task")
                 }
                 Some(task) => {
                     logger.monit_log(format!("Task status: {task_name} returning status"));
@@ -179,7 +180,7 @@ impl Monitor {
                 },
             }
         } else {
-            return format!("Error! Can't find \"{name}\" task");
+            return format!("Can't find \"{name}\" task");
         }
         result
     }
@@ -228,7 +229,7 @@ impl Monitor {
                 },
             }
         } else {
-            return format!("Error! Can't find \"{name}\" task");
+            return format!("Can't find \"{name}\" task");
         }
         result
     }
@@ -272,7 +273,7 @@ impl Monitor {
                     }
                     AutoRestart::Unexpected => match exit_code {
                         None => {
-                            logger.sth_log(format!("Error! Unable to access {task_name} process exit code. Can't compare with unexpected codes list"));
+                            logger.sth_log(format!("Unable to access {task_name} process exit code. Can't compare with unexpected codes list"));
                             process.state = UNKNOWN;
                         }
                         Some(code) => {
@@ -362,19 +363,49 @@ impl Monitor {
         match action {
             Action::Status(status) => self.get_task_status(status),
             Action::Config(task_name) => match self.get_task_json_config_by_name(&task_name) {
-                None => format!("Error! Can't find \"{task_name}\" task"),
+                None => format!("Can't find \"{task_name}\" task"),
                 Some(task) => format!("{task_name}: {task}"),
             },
-            Action::Shutdown => exit(0),
-            Action::Start(task_name, num) => self.start_task(&task_name, &num),
-            Action::Stop(task_name, num) => self.stop_task(&task_name, &num),
+            Action::Shutdown => remove_and_exit(0),
+            Action::Start(arg) => match arg {
+                Some((task_name, num)) => self.start_task(&task_name, &num),
+                None => {
+                    let tasks = self
+                        .tasks
+                        .lock()
+                        .unwrap()
+                        .keys()
+                        .cloned()
+                        .collect::<Vec<String>>();
+                    tasks
+                        .iter()
+                        .map(|task_name| self.start_task(&task_name, &None))
+                        .collect()
+                }
+            },
+            Action::Stop(arg) => match arg {
+                Some((task_name, num)) => self.stop_task(&task_name, &num),
+                None => {
+                    let tasks = self
+                        .tasks
+                        .lock()
+                        .unwrap()
+                        .keys()
+                        .cloned()
+                        .collect::<Vec<String>>();
+                    tasks
+                        .iter()
+                        .map(|task_name| self.stop_task(&task_name, &None))
+                        .collect()
+                }
+            },
             Action::Update(arg) => {
                 if let Some(config_path) = arg {
                     self.config_path = config_path;
                 }
                 match Configuration::from_yml(self.config_path.clone(), self.logger.clone()) {
                     Ok(conf) => self.update_configuration(conf),
-                    Err(err_msg) => format!("Error! {err_msg}"),
+                    Err(err_msg) => format!("{err_msg}"),
                 }
             }
         }

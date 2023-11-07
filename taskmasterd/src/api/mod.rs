@@ -1,15 +1,16 @@
 use crate::api::action::Action;
 use crate::core::logger::Logger;
 use crate::monitor::Monitor;
+use crate::{remove_and_exit, UNIX_DOMAIN_SOCKET_PATH};
 use std::borrow::Cow;
+use std::fs;
 use std::io::{Read, Write};
+use std::os::unix::fs::PermissionsExt;
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::process::exit;
 use std::sync::{Arc, Mutex};
 
 pub mod action;
-
-pub const UNIX_DOMAIN_SOCKET_PATH: &str = "/tmp/.unixdomain.sock";
 
 pub struct Responder {
     logger: Arc<Mutex<Logger>>,
@@ -21,16 +22,22 @@ impl Responder {
         let mut logger = self.logger.lock().unwrap();
         return match UnixListener::bind(UNIX_DOMAIN_SOCKET_PATH) {
             Ok(stream) => {
-                logger.resp_log(format!(
+                if let Err(_) =
+                    fs::set_permissions(UNIX_DOMAIN_SOCKET_PATH, fs::Permissions::from_mode(0o666))
+                {
+                    logger.log_err(format!(
+                        "Can't change permissions of \"{UNIX_DOMAIN_SOCKET_PATH}\""
+                    ));
+                    remove_and_exit(2);
+                }
+                logger.log(format!(
                     "Socket was successfully created: {UNIX_DOMAIN_SOCKET_PATH}"
                 ));
                 stream
             }
             Err(_) => {
-                logger.log_err(format!(
-                    "Error! Can't bind socket \"{UNIX_DOMAIN_SOCKET_PATH}\""
-                ));
-                exit(2);
+                logger.log_err(format!("Can't bind socket \"{UNIX_DOMAIN_SOCKET_PATH}\""));
+                remove_and_exit(2);
             }
         };
     }
@@ -39,13 +46,13 @@ impl Responder {
         let mut logger = self.logger.lock().unwrap();
         if let Err(e) = stream.write(message.as_bytes()) {
             logger.resp_log(format!(
-                "Error! Can't answer to the client with message: \"{message}\": {e}"
+                "Can't answer to the client with message: \"{message}\": {e}"
             ));
         } else {
             logger.resp_log(format!("Sending the answer: \"{message}\""));
         }
         if let Err(e) = stream.flush() {
-            logger.resp_log(format!("Error! Can't flush the stdout: {e}"));
+            logger.resp_log(format!("Can't flush the stdout: {e}"));
         }
     }
 
@@ -62,9 +69,9 @@ impl Responder {
             Err(error) => {
                 {
                     let mut logger = self.logger.lock().unwrap();
-                    logger.resp_log(format!("Error! Unknown action: {received_data}: {error}"));
+                    logger.resp_log(format!("Unknown action: {received_data}: {error}"));
                 }
-                self.write_message(stream, "Error! Unknown action".to_string());
+                self.write_message(stream, "Unknown action".to_string());
             }
         }
     }
@@ -93,7 +100,7 @@ impl Responder {
                 }
                 Err(e) => {
                     let logger = responder.logger.lock().unwrap();
-                    logger.log_err(format!("Error! Can't accept a connection: {e}"));
+                    logger.log_err(format!("Can't accept a connection: {e}"));
                 }
             }
         }

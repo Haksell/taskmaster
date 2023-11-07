@@ -11,6 +11,9 @@ use daemonize::Daemonize;
 use std::env;
 use std::sync::{Arc, Mutex};
 
+pub const UNIX_DOMAIN_SOCKET_PATH: &'static str = "/run/taskmaster.sock";
+pub const PID_FILE_PATH: &'static str = "/run/taskmasterd.pid";
+
 const HELP_MESSAGE: &str = "Options are:\n\t--help: Show help info\
     \n\t--no-daemon: Disables daemon mode\
     \n\t<path_to_config_file>: Starts server with a configuration";
@@ -19,9 +22,19 @@ macro_rules! error_exit {
     ($($arg:tt)*) => {
         {
             eprintln!($($arg)*);
-            std::process::exit(2);
+            remove_and_exit(2);
         }
     };
+}
+
+fn remove_files() {
+    let _ = std::fs::remove_file(UNIX_DOMAIN_SOCKET_PATH);
+    let _ = std::fs::remove_file(PID_FILE_PATH);
+}
+
+pub fn remove_and_exit(exit_code: i32) -> ! {
+    remove_files();
+    std::process::exit(exit_code);
 }
 
 fn parse_arguments() -> (bool, String) {
@@ -31,7 +44,7 @@ fn parse_arguments() -> (bool, String) {
         match arg.as_str() {
             "--help" => {
                 println!("{}", HELP_MESSAGE);
-                std::process::exit(0);
+                remove_and_exit(0);
             }
             "--no-daemonize" => should_daemonize = false,
             _ => {
@@ -61,8 +74,8 @@ fn run_program(monitor: Monitor, logger: Arc<Mutex<Logger>>) {
 }
 
 fn main() {
+    remove_files();
     let (should_daemonize, config_path) = parse_arguments();
-
     sighup_handler::set_sighup_handler();
 
     match Logger::new("first_log.log") {
@@ -76,13 +89,14 @@ fn main() {
                     monitor.update_configuration(conf);
                 }
                 Err(err_msg) => {
-                    error_exit!("{}", err_msg);
+                    eprintln!("{}", err_msg);
+                    remove_and_exit(2)
                 }
             }
 
             if should_daemonize {
                 match Daemonize::new()
-                    .pid_file("/var/run/server.pid")
+                    .pid_file(PID_FILE_PATH)
                     .chown_pid_file(true)
                     .working_directory(".")
                     .start()
@@ -98,4 +112,5 @@ fn main() {
             error_exit!("{error}")
         }
     }
+    remove_files();
 }

@@ -1,5 +1,5 @@
-SOCKET := /tmp/.unixdomain.sock
-PID_FILE := /var/run/server.pid
+SOCK_FILE := /run/taskmaster.sock
+PID_FILE := /run/taskmasterd.pid
 
 GARBAGE := *VBox*.log
 
@@ -26,11 +26,11 @@ cleanvagrant:
 	$(call rm,.vagrant)
 
 daemon:
-	$(call rm,$(SOCKET))
+	@mkdir -p /tmp/taskmaster 
 	cargo run --manifest-path taskmasterd/Cargo.toml -- $(CONFIG)
 
 nodaemon:
-	$(call rm,$(SOCKET))
+	@mkdir -p /tmp/taskmaster 
 	cargo run --manifest-path taskmasterd/Cargo.toml -- --no-daemonize $(CONFIG)
 
 stop:
@@ -41,6 +41,7 @@ client:
 	@python3 taskmasterctl/taskmasterctl.py
 
 clean: stop
-	$(call rm,$(SOCKET))
 	@rm -rf $(GARBAGE)
+	@rm -rf $(SOCK_FILE)
 	$(call rm,target)
+	@rm -rf /tmp/taskmaster/*
