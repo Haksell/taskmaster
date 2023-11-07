@@ -95,6 +95,8 @@ impl Task {
         Ok(())
     }
 
+    // TODO: refactor kill, stop & signal
+
     pub fn kill(&mut self) -> Result<(), String> {
         return match &mut self.child {
             None => Err(format!(
@@ -127,6 +129,18 @@ impl Task {
                 Ok(())
             }
         };
+    }
+
+    pub fn signal(&mut self, signum: u8) -> bool {
+        match &mut self.child {
+            None => false,
+            Some(child) => {
+                unsafe {
+                    libc::kill(child.id() as pid_t, signum as i32);
+                }
+                true
+            }
+        }
     }
 
     pub fn get_json_configuration(&self) -> String {

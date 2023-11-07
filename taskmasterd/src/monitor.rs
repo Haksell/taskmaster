@@ -235,9 +235,19 @@ impl Monitor {
 
     fn signal_task(&mut self, signum: u8, name: &String) -> String {
         let mut tasks = self.tasks.lock().unwrap();
-        let mut _logger = self.logger.lock().unwrap(); // TODO: log stuff
+        let mut logger = self.logger.lock().unwrap();
         match tasks.get_mut(name) {
-            Some(_task_group) => format!("TODO: send {signum} to {name}"),
+            Some(task_group) => {
+                let mut result = String::new();
+                for (i, process) in task_group.iter_mut().enumerate() {
+                    result += &logger.monit_log(if process.signal(signum) {
+                        format!("{name}#{i} received signal {signum}\n")
+                    } else {
+                        format!("Failed to send signal {signum} to {name}#{i} because it is not running\n")
+                    });
+                }
+                result
+            }
             None => format!("Can't find \"{name}\" task"),
         }
     }
