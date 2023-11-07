@@ -8,9 +8,6 @@ use std::os::unix::process::CommandExt;
 use std::process::{Child, Command, Stdio};
 use std::time::{Duration, SystemTime};
 
-//TODO: Validation of stdout/stderr files path
-//TODO: Check existing of working dir
-
 pub struct Task {
     pub configuration: Configuration,
     pub state: State,

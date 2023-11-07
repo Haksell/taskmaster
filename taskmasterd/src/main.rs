@@ -9,6 +9,7 @@ use crate::core::logger::Logger;
 use crate::monitor::Monitor;
 use daemonize::Daemonize;
 use std::env;
+use std::sync::{Arc, Mutex};
 
 const HELP_MESSAGE: &str = "Options are:\n\t--help: Show help info\
     \n\t--no-daemon: Disables daemon mode\
@@ -54,9 +55,9 @@ fn parse_arguments() -> (bool, String) {
     (should_daemonize, filename.unwrap())
 }
 
-fn run_program(monitor: &mut Monitor) {
+fn run_program(monitor: Monitor, logger: Arc<Mutex<Logger>>) {
     monitor.track();
-    Responder::listen(monitor);
+    Responder::listen(monitor, logger);
 }
 
 fn main() {
@@ -64,31 +65,37 @@ fn main() {
 
     sighup_handler::set_sighup_handler();
 
-    let logger = Logger::new(None);
-    logger.log(format!("taskmasterd launched (PID {})", std::process::id()));
+    match Logger::new("first_log.log") {
+        Ok(logger) => {
+            let logger = Arc::new(Mutex::new(logger));
+            println!("taskmasterd launched (PID {})", std::process::id());
 
-    let mut monitor = Monitor::new(config_path.clone());
-    match Configuration::from_yml(config_path) {
-        Ok(conf) => {
-            monitor.update_configuration(conf);
-        }
-        Err(err_msg) => {
-            logger.log_err(err_msg);
-            std::process::exit(2);
-        }
-    }
+            let mut monitor = Monitor::new(config_path.clone(), logger.clone());
+            match Configuration::from_yml(config_path, logger.clone()) {
+                Ok(conf) => {
+                    monitor.update_configuration(conf);
+                }
+                Err(err_msg) => {
+                    error_exit!("{}", err_msg);
+                }
+            }
 
-    if should_daemonize {
-        match Daemonize::new()
-            .pid_file("/var/run/server.pid")
-            .chown_pid_file(true)
-            .working_directory(".")
-            .start()
-        {
-            Ok(_) => run_program(&mut monitor),
-            Err(e) => eprintln!("Can't daemonize: {e}. Already launched or check sudo"),
+            if should_daemonize {
+                match Daemonize::new()
+                    .pid_file("/var/run/server.pid")
+                    .chown_pid_file(true)
+                    .working_directory(".")
+                    .start()
+                {
+                    Ok(_) => run_program(monitor, logger),
+                    Err(e) => eprintln!("Can't daemonize: {e}. Already launched or check sudo"),
+                }
+            } else {
+                run_program(monitor, logger);
+            }
         }
-    } else {
-        run_program(&mut monitor);
+        Err(error) => {
+            error_exit!("{error}")
+        }
     }
 }

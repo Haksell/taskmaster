@@ -8,48 +8,47 @@ use crate::core::task::Task;
 use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
 use std::process::exit;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread;
 use std::time::{Duration, SystemTime};
 
 pub struct Monitor {
     tasks: Arc<Mutex<BTreeMap<String, Vec<Task>>>>,
-    logger: Logger,
+    logger: Arc<Mutex<Logger>>,
     config_path: String,
 }
 
 impl Monitor {
-    pub fn new(config_path: String) -> Monitor {
+    pub fn new(config_path: String, logger: Arc<Mutex<Logger>>) -> Monitor {
         Monitor {
             tasks: Arc::new(Mutex::new(BTreeMap::new())),
-            logger: Logger::new(Some("Monitor")),
+            logger,
             config_path,
         }
     }
 
     pub fn update_configuration(&mut self, configs: BTreeMap<String, Configuration>) -> String {
         let mut tasks = self.tasks.lock().unwrap();
+        let mut logger = self.logger.lock().unwrap();
         let mut result = String::new();
-        self.logger.log("Configuration loading has been initiated");
+        logger.monit_log("Configuration loading has been initiated".to_string());
         for (task_name, config) in &configs {
             let update = Task::new(&config);
             match tasks.entry(task_name.clone()) {
                 Entry::Vacant(entry) => {
-                    self.logger
-                        .log(format!("New task: {task_name} has been added"));
+                    logger.monit_log(format!("New task: {task_name} has been added"));
                     entry.insert((0..config.num_procs).map(|_| Task::new(&config)).collect());
                     result += &format!("{task_name}: added\n");
                 }
                 Entry::Occupied(mut entry) => {
                     if entry.get()[0].configuration != update.configuration {
                         entry.insert((0..config.num_procs).map(|_| Task::new(&config)).collect());
-                        self.logger.log(format!(
+                        logger.monit_log(format!(
                             "Existing task: {task_name} was modified, changes has been applied"
                         ));
                         result += &format!("{task_name}: updated\n")
                     } else {
-                        self.logger
-                            .log(format!("Existing task: {task_name} wasn't modified"));
+                        logger.monit_log(format!("Existing task: {task_name} wasn't modified"));
                     }
                 }
             }
@@ -58,19 +57,22 @@ impl Monitor {
             let is_present = configs.contains_key(task_name);
             if !is_present {
                 result += &format!("{task_name}: deleted\n");
-                self.logger.log(format!("{task_name} has been deleted"));
+                logger.monit_log(format!("{task_name} has been deleted"));
             }
             is_present
         });
         result
     }
 
-    fn get_task_status(&self, task_name: Option<String>) -> String {
+    fn get_task_status(&mut self, task_name: Option<String>) -> String {
         let tasks = self.tasks.lock().unwrap();
+        let mut logger = self.logger.lock().unwrap();
         return match task_name {
             None => {
-                self.logger
-                    .log("Task status: no task name was specified. Returning all tasks status");
+                logger.monit_log(
+                    "Task status: no task name was specified. Returning all tasks status"
+                        .to_string(),
+                );
                 if tasks.is_empty() {
                     return "No task found.".to_string();
                 }
@@ -96,13 +98,11 @@ impl Monitor {
             }
             Some(ref task_name) => match tasks.get(task_name.as_str()) {
                 None => {
-                    self.logger
-                        .log(format!("Task status: {task_name} wasn't found"));
+                    logger.monit_log(format!("Task status: {task_name} wasn't found"));
                     format!("Error! Can't find \"{task_name}\" task")
                 }
                 Some(task) => {
-                    self.logger
-                        .log(format!("Task status: {task_name} returning status"));
+                    logger.monit_log(format!("Task status: {task_name} returning status"));
                     format!(
                         "{task_name}: {}",
                         task.iter()
@@ -116,18 +116,19 @@ impl Monitor {
         };
     }
 
-    fn get_task_json_config_by_name(&self, name: &String) -> Option<String> {
+    fn get_task_json_config_by_name(&mut self, name: &String) -> Option<String> {
         let tasks = self.tasks.lock().unwrap();
+        let mut logger = self.logger.lock().unwrap();
         return match tasks
             .get(name.as_str())
             .map(|task| task[0].get_json_configuration())
         {
             None => {
-                self.logger.log(format!("Get config: {name} wasn't found"));
+                logger.monit_log(format!("Get config: {name} wasn't found"));
                 None
             }
             Some(config) => {
-                self.logger.log(format!(
+                logger.monit_log(format!(
                     "Get config: returning {name} configuration in json format"
                 ));
                 Some(config)
@@ -137,23 +138,23 @@ impl Monitor {
 
     fn stop_task(&mut self, name: &String, num: &Option<usize>) -> String {
         let mut tasks = self.tasks.lock().unwrap();
+        let mut logger = self.logger.lock().unwrap();
         let mut result = String::new();
         if let Some(task_group) = tasks.get_mut(name) {
             match num {
                 None => {
-                    self.logger
-                        .log(format!("All task in {name} will be stopped"));
+                    logger.monit_log(format!("All task in {name} will be stopped"));
                     for (i, process) in task_group.iter_mut().enumerate() {
                         if let RUNNING(_) = process.state {
                             if let Err(e_msg) = process.stop() {
-                                result += &self
-                                    .logger
-                                    .log(format!("{name}#{i}: Error during the stop: {e_msg}\n"));
+                                result += &logger.monit_log(format!(
+                                    "{name}#{i}: Error during the stop: {e_msg}\n"
+                                ));
                             } else {
-                                result += &self.logger.log(format!("{name}#{i}: Stopping...\n"))
+                                result += &logger.monit_log(format!("{name}#{i}: Stopping...\n"))
                             }
                         } else {
-                            result += &self.logger.log(format!(
+                            result += &logger.monit_log(format!(
                                 "{name}#{i}: Can't be stopped. Current status {}\n",
                                 process.state
                             ))
@@ -162,18 +163,17 @@ impl Monitor {
                 }
                 Some(index) => match task_group.get_mut(*index) {
                     None => {
-                        result += &self.logger.log(format!(
+                        result += &logger.monit_log(format!(
                             "{name}#{index}: Can't be stopped, it doesn't exist\n"
                         ))
                     }
                     Some(task) => match task.stop() {
                         Ok(_) => {
-                            result += &self.logger.log(format!("{name}#{index}: Stopping...\n"))
+                            result += &logger.monit_log(format!("{name}#{index}: Stopping...\n"))
                         }
                         Err(err) => {
-                            result += &self
-                                .logger
-                                .log(format!("{name}#{index}: Can't be stopped: {err}\n"))
+                            result += &logger
+                                .monit_log(format!("{name}#{index}: Can't be stopped: {err}\n"))
                         }
                     },
                 },
@@ -186,23 +186,23 @@ impl Monitor {
 
     fn start_task(&mut self, name: &String, num: &Option<usize>) -> String {
         let mut tasks = self.tasks.lock().unwrap();
+        let mut logger = self.logger.lock().unwrap();
         let mut result = String::new();
         if let Some(task_group) = tasks.get_mut(name) {
             match num {
                 None => {
-                    self.logger
-                        .log(format!("All task in {name} will be started"));
+                    logger.monit_log(format!("All task in {name} will be started"));
                     for (i, process) in task_group.iter_mut().enumerate() {
                         if process.can_be_launched() {
                             if let Err(e_msg) = process.run() {
-                                result += &self
-                                    .logger
-                                    .log(format!("{name}#{i}: Error during the start: {e_msg}\n"));
+                                result += &logger.monit_log(format!(
+                                    "{name}#{i}: Error during the start: {e_msg}\n"
+                                ));
                             } else {
-                                result += &self.logger.log(format!("{name}#{i}: Starting...\n"))
+                                result += &logger.monit_log(format!("{name}#{i}: Starting...\n"))
                             }
                         } else {
-                            result += &self.logger.log(format!(
+                            result += &logger.monit_log(format!(
                                 "{name}#{i}: Can't be started. Current status {}\n",
                                 process.state
                             ))
@@ -211,20 +211,18 @@ impl Monitor {
                 }
                 Some(index) => match task_group.get_mut(*index) {
                     None => {
-                        result += &self.logger.log(format!(
+                        result += &logger.monit_log(format!(
                             "{name}#{index}: Can't be started, it doesn't exist\n"
                         ))
                     }
                     Some(task) => match task.run() {
                         Ok(_) => {
-                            result += &self
-                                .logger
-                                .log(format!("{name}#{index}: has been started\n"))
+                            result +=
+                                &logger.monit_log(format!("{name}#{index}: has been started\n"))
                         }
                         Err(err) => {
-                            result += &self
-                                .logger
-                                .log(format!("{name}#{index}: Can't be launched: {err}\n"))
+                            result += &logger
+                                .monit_log(format!("{name}#{index}: Can't be launched: {err}\n"))
                         }
                     },
                 },
@@ -239,25 +237,25 @@ impl Monitor {
         process: &mut Task,
         task_name: String,
         exit_code: Option<i32>,
-        logger: &Logger,
+        logger: &mut MutexGuard<Logger>,
     ) {
-        logger.log(format!("{task_name}: exited with status {:?}", exit_code));
+        logger.sth_log(format!("{task_name}: exited with status {:?}", exit_code));
         process.exit_code = exit_code;
         process.child = None;
         match process.state {
             STARTING(_) => {
                 process.state = BACKOFF;
-                logger.log(format!(
+                logger.sth_log(format!(
                     "{task_name}: Exited too quickly, status changed to backoff"
                 ));
                 if process.restarts_left == 0 {
                     process.state = FATAL(format!("exited too quickly"));
-                    logger.log(format!(
+                    logger.sth_log(format!(
                         "{task_name}: No restarts left, status has been changed to fatal."
                     ));
                 } else {
                     process.restarts_left -= 1;
-                    logger.log(format!("{task_name}: Restarting, exited too quickly"));
+                    logger.sth_log(format!("{task_name}: Restarting, exited too quickly"));
                     //TODO: real supervisor doesn't change status to starting if it's backoff
                     let _ = process.run();
                 }
@@ -266,23 +264,23 @@ impl Monitor {
                 match process.configuration.auto_restart {
                     AutoRestart::True => {
                         let _ = process.run();
-                        logger.log(format!("{task_name}: Relaunching..."));
+                        logger.sth_log(format!("{task_name}: Relaunching..."));
                     }
                     AutoRestart::False => {
-                        logger.log(format!("{task_name}: auto restart disabled."));
+                        logger.sth_log(format!("{task_name}: auto restart disabled."));
                         process.state = EXITED(SystemTime::now());
                     }
                     AutoRestart::Unexpected => match exit_code {
                         None => {
-                            logger.log(format!("Error! Unable to access {task_name} process exit code. Can't compare with unexpected codes list"));
+                            logger.sth_log(format!("Error! Unable to access {task_name} process exit code. Can't compare with unexpected codes list"));
                             process.state = UNKNOWN;
                         }
                         Some(code) => {
                             if process.configuration.exit_codes.contains(&code) {
-                                logger.log(format!("{task_name}: program has been finished with expected status, relaunch is not needed"));
+                                logger.sth_log(format!("{task_name}: program has been finished with expected status, relaunch is not needed"));
                                 process.state = EXITED(SystemTime::now());
                             } else {
-                                logger.log(format!("{task_name}: {code} is not expected exit status, relaunching..."));
+                                logger.sth_log(format!("{task_name}: {code} is not expected exit status, relaunching..."));
                                 let _ = process.run();
                             }
                         }
@@ -290,7 +288,7 @@ impl Monitor {
                 }
             }
             STOPPING(stopped_at) => {
-                logger.log(format!(
+                logger.sth_log(format!(
                     "{task_name}: has stopped by itself after sending a signal"
                 ));
                 process.state = STOPPED(Some(stopped_at));
@@ -304,23 +302,23 @@ impl Monitor {
 
     pub fn track(&self) {
         let monitor_clone = self.tasks.clone();
-        let logger = Logger::new(Some("Monitor thread"));
+        let logger_clone = self.logger.clone();
 
         let _handle = thread::spawn(move || {
-            logger.log("Monitor thread has been created");
             loop {
                 let mut tasks = monitor_clone.lock().unwrap();
+                let mut logger = logger_clone.lock().unwrap();
                 for (name, task) in tasks.iter_mut() {
                     for (i, process) in task.iter_mut().enumerate() {
                         if let STARTING(started_at) = process.state {
                             if process.is_passed_starting_period(started_at) {
-                                logger.log(format!("{name} #{i}: is running now"));
+                                logger.sth_log(format!("{name} #{i}: is running now"));
                                 process.state = RUNNING(started_at);
                             }
                         }
                         if let STOPPING(stopped_at) = process.state {
                             if process.is_passed_stopping_period(stopped_at) {
-                                logger.log(format!("{name} #{i}: Should be killed"));
+                                logger.sth_log(format!("{name} #{i}: Should be killed"));
                                 //TODO: handle
                                 let _ = process.kill();
                             }
@@ -332,7 +330,7 @@ impl Monitor {
                                         process,
                                         format!("{name} #{i}"),
                                         status.code(),
-                                        &logger,
+                                        &mut logger,
                                     );
                                 }
                                 Ok(None) => {}
@@ -344,15 +342,16 @@ impl Monitor {
                                 if process.configuration.auto_start
                                     && process.state == STOPPED(None)
                                 {
-                                    logger.log(format!("Auto starting {name} #{i}"));
+                                    logger.sth_log(format!("Auto starting {name} #{i}"));
                                     if let Err(error_msg) = process.run() {
-                                        logger.log(format!("{name}#{i}: {error_msg}"));
+                                        logger.sth_log(format!("{name}#{i}: {error_msg}"));
                                     }
                                 }
                             }
                         }
                     }
                 }
+                drop(logger);
                 drop(tasks);
                 thread::sleep(Duration::from_millis(333));
             }
@@ -373,7 +372,7 @@ impl Monitor {
                 if let Some(config_path) = arg {
                     self.config_path = config_path;
                 }
-                match Configuration::from_yml(self.config_path.clone()) {
+                match Configuration::from_yml(self.config_path.clone(), self.logger.clone()) {
                     Ok(conf) => self.update_configuration(conf),
                     Err(err_msg) => format!("Error! {err_msg}"),
                 }

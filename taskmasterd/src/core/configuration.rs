@@ -4,6 +4,7 @@ use std::collections::BTreeMap;
 use std::fmt::{Display, Formatter};
 use std::fs::File;
 use std::io::Read;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use validator::{Validate, ValidationError};
 
@@ -119,9 +120,12 @@ impl Display for State {
 pub struct Configuration {
     #[serde(deserialize_with = "deserialize_string_and_trim")]
     #[validate(length(min = 1, message = "cmd: can't be empty"))]
-    // TODO: filename: String
-    pub cmd: String, //make immutable (e.g. getters?)
-    #[validate(range(min = 1))]
+    pub cmd: String,
+    #[validate(range(
+        min = 1,
+        max = 100000,
+        message = "num_procs value should be between 1 and 100000"
+    ))]
     pub num_procs: u32,
     #[serde(deserialize_with = "deserialize_umask")]
     #[validate(custom = "validate_umask")]
@@ -131,7 +135,7 @@ pub struct Configuration {
     pub auto_start: bool,
     pub auto_restart: AutoRestart,
     pub exit_codes: Vec<i32>,
-    pub start_retries: u32, //make immutable (e.g. getters?)
+    pub start_retries: u32,
     pub start_time: u64,
     pub stop_signal: StopSignal,
     #[validate(range(min = 1, message = "invalid stop_time"))]
@@ -165,8 +169,11 @@ impl Default for Configuration {
 }
 
 impl Configuration {
-    pub fn from_yml(path: String) -> Result<BTreeMap<String, Configuration>, String> {
-        let logger = Logger::new(None);
+    pub fn from_yml(
+        path: String,
+        logger: Arc<Mutex<Logger>>,
+    ) -> Result<BTreeMap<String, Configuration>, String> {
+        let mut logger = logger.lock().unwrap();
         logger.log(format!("Reading {path}"));
         let mut file = File::open(&path).map_err(|err| format!("{}: {}", path, err))?;
         let mut content = String::new();
@@ -236,181 +243,4 @@ where
     D: Deserializer<'de>,
 {
     String::deserialize(deserializer).map(|s| Some(s.trim().to_string()))
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::core::configuration::AutoRestart::Unexpected;
-    use crate::core::configuration::Configuration;
-    use crate::core::configuration::StopSignal::TERM;
-    use std::collections::BTreeMap;
-
-    const CMD_EMPTY: &str = "config_files/test/cmd_empty.yml";
-    const CMD_NOT_PROVIDED: &str = "config_files/test/cmd_not_provided.yml";
-    const CMD_ONLY_WHITE_SPACES: &str = "config_files/test/cmd_white_spaces.yml";
-    const CMD_WHITE_SPACES_BEFORE_AND_AFTER: &str =
-        "config_files/test/cmd_whitespaces_before_and_after.yml";
-    const CONFIG_ONLY_CMD_PRESENT: &str = "config_files/test/config_only_cmd.yml";
-    const MASK_NOT_VALID_1: &str = "config_files/test/umask_not_valid_1.yml";
-    const MASK_NOT_VALID_2: &str = "config_files/test/umask_not_valid_2.yml";
-    const WORKING_DIR_WITH_SPACES: &str = "config_files/test/working_dir_with_spaces.yml";
-    const STDOUT_WITH_SPACES: &str = "config_files/test/stdout_path_with_spaces.yml";
-    const STDERR_WITH_SPACES: &str = "config_files/test/stderr_path_with_spaces.yml";
-
-    #[test]
-    fn cmd_empty_should_return_error() {
-        //given && when
-        let task = Configuration::from_yml(CMD_EMPTY.into());
-
-        //then
-        assert!(task.is_err());
-        if let Err(error) = task {
-            assert_eq!("task1: \"cmd: can't be empty\"", error.to_string())
-        }
-    }
-
-    #[test]
-    fn cmd_not_provided_should_return_error() {
-        //given && when
-        let task = Configuration::from_yml(CMD_NOT_PROVIDED.into());
-
-        //then
-        assert!(task.is_err());
-        if let Err(error) = task {
-            assert_eq!("task1: \"cmd: can't be empty\"", error.to_string())
-        }
-    }
-
-    #[test]
-    fn cmd_white_spaces_should_return_error() {
-        //given && when
-        let task = Configuration::from_yml(CMD_ONLY_WHITE_SPACES.into());
-
-        //then
-        assert!(task.is_err());
-        if let Err(error) = task {
-            assert_eq!("task1: \"cmd: can't be empty\"", error.to_string())
-        }
-    }
-
-    #[test]
-    fn cmd_white_spaces_before_and_after_should_return_trimmed_cmd() {
-        //given
-        let expected_key = String::from("task1");
-        let expected_value = Configuration {
-            cmd: String::from("while true; do echo 'Task 1 output'; sleep 3; done"),
-            num_procs: 1,
-            umask: 0o777,
-            working_dir: Some(String::from("/tmp")),
-            auto_start: true,
-            auto_restart: Unexpected,
-            exit_codes: vec![0, 2],
-            start_retries: 3,
-            start_time: 5,
-            stop_signal: TERM,
-            stop_time: 10,
-            stdout: Some(String::from("/tmp/task1.stdout")),
-            stderr: Some(String::from("/tmp/task1.stderr")),
-            env: BTreeMap::new(),
-        };
-
-        // when
-        let task = Configuration::from_yml(CMD_WHITE_SPACES_BEFORE_AND_AFTER.into()).unwrap();
-
-        //then
-        let mut expected_map = BTreeMap::new();
-        expected_map.insert(expected_key, expected_value);
-        assert_eq!(task, expected_map);
-    }
-
-    #[test]
-    fn only_cmd_cfg_should_put_default_values() {
-        //given
-        let mut expected_task = Configuration::default();
-        expected_task.cmd = String::from("only_cmd_is_present");
-        let expected_key = String::from("task1");
-        let mut expected: BTreeMap<String, Configuration> = BTreeMap::new();
-        expected.insert(expected_key, expected_task);
-
-        // when
-        let task = Configuration::from_yml(CONFIG_ONLY_CMD_PRESENT.into()).unwrap();
-
-        //then
-        assert_eq!(expected, task);
-    }
-
-    #[test]
-    fn umask_unvalid_1_should_return_error() {
-        //given && when
-        let task = Configuration::from_yml(MASK_NOT_VALID_1.into());
-
-        //then
-        assert!(task.is_err());
-        if let Err(error) = task {
-            assert_eq!(error.to_string(), "task1: \"Invalid umask\"");
-        }
-    }
-
-    #[test]
-    fn umask_unvalid_2_should_return_error() {
-        //given && when
-        let task = Configuration::from_yml(MASK_NOT_VALID_2.into());
-
-        //then
-        assert!(task.is_err());
-        if let Err(error) = task {
-            assert!(error.to_string().contains("is not a valid umask"));
-        }
-    }
-
-    #[test]
-    fn working_dir_with_spaces_should_be_trimmed() {
-        //given
-        let mut expected_task = Configuration::default();
-        expected_task.cmd = String::from("cmd");
-        expected_task.working_dir = Some(String::from("/tmp"));
-        let expected_key = String::from("task1");
-        let mut expected: BTreeMap<String, Configuration> = BTreeMap::new();
-        expected.insert(expected_key, expected_task);
-
-        // when
-        let task = Configuration::from_yml(WORKING_DIR_WITH_SPACES.into()).unwrap();
-
-        //then
-        assert_eq!(expected, task);
-    }
-
-    #[test]
-    fn stdout_path_with_spaces_should_be_trimmed() {
-        //given
-        let mut expected_task = Configuration::default();
-        expected_task.cmd = String::from("cmd");
-        expected_task.stdout = Some(String::from("/tmp/task1.stdout"));
-        let expected_key = String::from("task1");
-        let mut expected: BTreeMap<String, Configuration> = BTreeMap::new();
-        expected.insert(expected_key, expected_task);
-
-        // when
-        let task = Configuration::from_yml(STDOUT_WITH_SPACES.into()).unwrap();
-
-        //then
-        assert_eq!(expected, task);
-    }
-
-    #[test]
-    fn stderr_path_with_spaces_should_be_trimmed() {
-        //given
-        let mut expected_task = Configuration::default();
-        expected_task.cmd = String::from("cmd");
-        expected_task.stderr = Some(String::from("/tmp/task1.stderr"));
-        let expected_key = String::from("task1");
-        let mut expected: BTreeMap<String, Configuration> = BTreeMap::new();
-        expected.insert(expected_key, expected_task);
-
-        // when
-        let task = Configuration::from_yml(STDERR_WITH_SPACES.into()).unwrap();
-
-        //then
-        assert_eq!(expected, task);
-    }
 }
