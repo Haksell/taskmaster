@@ -98,7 +98,7 @@ impl Monitor {
                 None => {
                     self.logger
                         .log(format!("Task status: {task_name} wasn't found"));
-                    format!("Error! Can't find \"{task_name}\" task")
+                    format!("Can't find \"{task_name}\" task")
                 }
                 Some(task) => {
                     self.logger
@@ -179,7 +179,7 @@ impl Monitor {
                 },
             }
         } else {
-            return format!("Error! Can't find \"{name}\" task");
+            return format!("Can't find \"{name}\" task");
         }
         result
     }
@@ -230,7 +230,7 @@ impl Monitor {
                 },
             }
         } else {
-            return format!("Error! Can't find \"{name}\" task");
+            return format!("Can't find \"{name}\" task");
         }
         result
     }
@@ -274,7 +274,7 @@ impl Monitor {
                     }
                     AutoRestart::Unexpected => match exit_code {
                         None => {
-                            logger.log(format!("Error! Unable to access {task_name} process exit code. Can't compare with unexpected codes list"));
+                            logger.log(format!("Unable to access {task_name} process exit code. Can't compare with unexpected codes list"));
                             process.state = UNKNOWN;
                         }
                         Some(code) => {
@@ -363,7 +363,7 @@ impl Monitor {
         match action {
             Action::Status(status) => self.get_task_status(status),
             Action::Config(task_name) => match self.get_task_json_config_by_name(&task_name) {
-                None => format!("Error! Can't find \"{task_name}\" task"),
+                None => format!("Can't find \"{task_name}\" task"),
                 Some(task) => format!("{task_name}: {task}"),
             },
             Action::Shutdown => exit(0),
@@ -405,7 +405,7 @@ impl Monitor {
                 }
                 match Configuration::from_yml(self.config_path.clone()) {
                     Ok(conf) => self.update_configuration(conf),
-                    Err(err_msg) => format!("Error! {err_msg}"),
+                    Err(err_msg) => format!("{err_msg}"),
                 }
             }
         }
