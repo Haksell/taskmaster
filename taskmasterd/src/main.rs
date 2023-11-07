@@ -19,7 +19,7 @@ pub const PID_FILE_PATH: &'static str = "/tmp/taskmasterd.pid";
 pub const LOG_FILE_PATH: &'static str = "/tmp/taskmasterd.log";
 
 const HELP_MESSAGE: &str = "Options are:\n\t--help: Show help info\
-    \n\t--no-daemon: Disables daemon mode\
+    \n\t--no-daemonize: Disables daemon mode\
     \n\t<path_to_config_file>: Starts server with a configuration";
 
 macro_rules! error_exit {
