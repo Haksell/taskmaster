@@ -148,14 +148,14 @@ impl Monitor {
                         if let RUNNING(_) = process.state {
                             if let Err(e_msg) = process.stop() {
                                 result += &logger.monit_log(format!(
-                                    "{name}#{i}: Error during the stop: {e_msg}\n"
+                                    "{name}[{i}]: Error during the stop: {e_msg}\n"
                                 ));
                             } else {
-                                result += &logger.monit_log(format!("{name}#{i}: Stopping...\n"))
+                                result += &logger.monit_log(format!("{name}[{i}]: Stopping...\n"))
                             }
                         } else {
                             result += &logger.monit_log(format!(
-                                "{name}#{i}: Can't be stopped. Current status {}\n",
+                                "{name}[{i}]: Can't be stopped. Current status {}\n",
                                 process.state
                             ))
                         }
@@ -164,16 +164,16 @@ impl Monitor {
                 Some(index) => match task_group.get_mut(*index) {
                     None => {
                         result += &logger.monit_log(format!(
-                            "{name}#{index}: Can't be stopped, it doesn't exist\n"
+                            "{name}[{index}]: Can't be stopped, it doesn't exist\n"
                         ))
                     }
                     Some(task) => match task.stop() {
                         Ok(_) => {
-                            result += &logger.monit_log(format!("{name}#{index}: Stopping...\n"))
+                            result += &logger.monit_log(format!("{name}[{index}]: Stopping...\n"))
                         }
                         Err(err) => {
                             result += &logger
-                                .monit_log(format!("{name}#{index}: Can't be stopped: {err}\n"))
+                                .monit_log(format!("{name}[{index}]: Can't be stopped: {err}\n"))
                         }
                     },
                 },
@@ -196,14 +196,14 @@ impl Monitor {
                         if process.can_be_launched() {
                             if let Err(e_msg) = process.run() {
                                 result += &logger.monit_log(format!(
-                                    "{name}#{i}: Error during the start: {e_msg}\n"
+                                    "{name}[{i}]: Error during the start: {e_msg}\n"
                                 ));
                             } else {
-                                result += &logger.monit_log(format!("{name}#{i}: Starting...\n"))
+                                result += &logger.monit_log(format!("{name}[{i}]: Starting...\n"))
                             }
                         } else {
                             result += &logger.monit_log(format!(
-                                "{name}#{i}: Can't be started. Current status {}\n",
+                                "{name}[{i}]: Can't be started. Current status {}\n",
                                 process.state
                             ))
                         }
@@ -212,17 +212,17 @@ impl Monitor {
                 Some(index) => match task_group.get_mut(*index) {
                     None => {
                         result += &logger.monit_log(format!(
-                            "{name}#{index}: Can't be started, it doesn't exist\n"
+                            "{name}[{index}]: Can't be started, it doesn't exist\n"
                         ))
                     }
                     Some(task) => match task.run() {
                         Ok(_) => {
                             result +=
-                                &logger.monit_log(format!("{name}#{index}: has been started\n"))
+                                &logger.monit_log(format!("{name}[{index}]: has been started\n"))
                         }
                         Err(err) => {
                             result += &logger
-                                .monit_log(format!("{name}#{index}: Can't be launched: {err}\n"))
+                                .monit_log(format!("{name}[{index}]: Can't be launched: {err}\n"))
                         }
                     },
                 },
@@ -327,13 +327,13 @@ impl Monitor {
                     for (i, process) in task.iter_mut().enumerate() {
                         if let STARTING(started_at) = process.state {
                             if process.is_passed_starting_period(started_at) {
-                                logger.sth_log(format!("{name} #{i}: is running now"));
+                                logger.sth_log(format!("{name}[{i}]: is running now"));
                                 process.state = RUNNING(started_at);
                             }
                         }
                         if let STOPPING(stopped_at) = process.state {
                             if process.is_passed_stopping_period(stopped_at) {
-                                logger.sth_log(format!("{name} #{i}: Should be killed"));
+                                logger.sth_log(format!("{name}[{i}]: Should be killed"));
                                 //TODO: handle
                                 let _ = process.kill();
                             }
@@ -343,7 +343,7 @@ impl Monitor {
                                 Ok(Some(status)) => {
                                     Monitor::manage_finished_state(
                                         process,
-                                        format!("{name} #{i}"),
+                                        format!("{name}[{i}]"),
                                         status.code(),
                                         &mut logger,
                                     );
@@ -357,9 +357,9 @@ impl Monitor {
                                 if process.configuration.auto_start
                                     && process.state == STOPPED(None)
                                 {
-                                    logger.sth_log(format!("Auto starting {name} #{i}"));
+                                    logger.sth_log(format!("Auto starting {name}[{i}]"));
                                     if let Err(error_msg) = process.run() {
-                                        logger.sth_log(format!("{name}#{i}: {error_msg}"));
+                                        logger.sth_log(format!("{name}[{i}]: {error_msg}"));
                                     }
                                 }
                             }
