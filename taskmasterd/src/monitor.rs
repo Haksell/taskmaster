@@ -233,6 +233,15 @@ impl Monitor {
         result
     }
 
+    fn signal_task(&mut self, signum: u8, name: &String) -> String {
+        let mut tasks = self.tasks.lock().unwrap();
+        let mut _logger = self.logger.lock().unwrap(); // TODO: log stuff
+        match tasks.get_mut(name) {
+            Some(_task_group) => format!("TODO: send {signum} to {name}"),
+            None => format!("Can't find \"{name}\" task"),
+        }
+    }
+
     fn manage_finished_state(
         process: &mut Task,
         task_name: String,
@@ -374,7 +383,7 @@ impl Monitor {
                 })
                 .join(""),
             Action::Shutdown => remove_and_exit(0),
-            Action::Signal(signum, task_name) => "signalled".to_string(),
+            Action::Signal(signum, task_name) => self.signal_task(signum, &task_name),
             Action::Start(arg) => match arg {
                 Some((task_name, num)) => self.start_task(&task_name, &num),
                 None => {
