@@ -12,7 +12,7 @@ use std::env;
 use std::sync::{Arc, Mutex};
 
 pub const UNIX_DOMAIN_SOCKET_PATH: &'static str = "/tmp/taskmaster.sock";
-pub const PID_FILE_PATH: &'static str = "/var/run/taskmasterd.pid";
+pub const PID_FILE_PATH: &'static str = "/tmp/taskmasterd.pid";
 pub const LOG_FILE_PATH: &'static str = "/tmp/taskmasterd.log";
 
 const HELP_MESSAGE: &str = "Options are:\n\t--help: Show help info\
