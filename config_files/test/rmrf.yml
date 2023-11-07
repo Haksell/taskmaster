@@ -1,0 +1,15 @@
+rmrf:
+  cmd: "rm -rf swap.img"
+  num_procs: 1
+  umask: 777
+  auto_start: true
+  auto_restart: unexpected
+  exit_codes:
+    - 0
+    - 2
+  start_retries: 3
+  start_time: 0
+  stop_signal: USR1
+  stop_time: 1
+  stdout: /tmp/taskmaster/rmrf.stdout
+  stderr: /tmp/taskmaster/rmrf.stderr
