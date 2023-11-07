@@ -367,8 +367,38 @@ impl Monitor {
                 Some(task) => format!("{task_name}: {task}"),
             },
             Action::Shutdown => exit(0),
-            Action::Start(task_name, num) => self.start_task(&task_name, &num),
-            Action::Stop(task_name, num) => self.stop_task(&task_name, &num),
+            Action::Start(arg) => match arg {
+                Some((task_name, num)) => self.start_task(&task_name, &num),
+                None => {
+                    let tasks = self
+                        .tasks
+                        .lock()
+                        .unwrap()
+                        .keys()
+                        .cloned()
+                        .collect::<Vec<String>>();
+                    tasks
+                        .iter()
+                        .map(|task_name| self.start_task(&task_name, &None))
+                        .collect()
+                }
+            },
+            Action::Stop(arg) => match arg {
+                Some((task_name, num)) => self.stop_task(&task_name, &num),
+                None => {
+                    let tasks = self
+                        .tasks
+                        .lock()
+                        .unwrap()
+                        .keys()
+                        .cloned()
+                        .collect::<Vec<String>>();
+                    tasks
+                        .iter()
+                        .map(|task_name| self.stop_task(&task_name, &None))
+                        .collect()
+                }
+            },
             Action::Update(arg) => {
                 if let Some(config_path) = arg {
                     self.config_path = config_path;

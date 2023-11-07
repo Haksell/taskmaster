@@ -14,7 +14,6 @@ UNIX_DOMAIN_SOCKET = "/tmp/.unixdomain.sock"
 
 RESET = "\033[0m"
 BOLD = "\033[1m"
-RED = "\033[91m"
 GREEN = "\033[92m"
 CYAN = "\033[96m"
 
@@ -26,26 +25,26 @@ class Argument(Enum):
     ZERO = auto()
     OPTIONAL = auto()
     ONE = auto()
-    ONE_OR_TWO = auto()  # TODO: ZERO_OR_TWO
+    ZERO_TO_TWO = auto()  # TODO: ZERO_OR_TWO
 
 
 CHECK_ARGC = {
     Argument.ZERO: lambda argc: argc == 0,
     Argument.OPTIONAL: lambda argc: argc <= 1,
     Argument.ONE: lambda argc: argc == 1,
-    Argument.ONE_OR_TWO: lambda argc: 1 <= argc <= 2,
+    Argument.ZERO_TO_TWO: lambda argc: argc <= 2,
 }
 
 ARGUMENT_STRING = {
     Argument.ZERO: "doesn't accept an argument",
     Argument.OPTIONAL: "accepts zero or one argument",
     Argument.ONE: "requires exactly one argument",
-    Argument.ONE_OR_TWO: "requires one or two arguments",
+    Argument.ZERO_TO_TWO: "requires zero, one or two arguments",
 }
 
 
 def print_error(s):
-    print(f"{RED}{s}{RESET}", file=sys.stderr)
+    print(s, file=sys.stderr)
 
 
 def send_to_socket(message):
@@ -86,6 +85,21 @@ def send_to_socket(message):
         print_error(f"Unknown error: {e}")
 
 
+def handle_zero_to_two_arguments(command, argc, argv):
+    if argc == 0:
+        return {command: None}
+    elif argc == 1:
+        return {command: [argv[0], None]}
+    else:
+        try:
+            idx = int(argv[1])
+            assert idx >= 0
+        except (AssertionError, ValueError):
+            print_error(f'Invalid index: "{argv[1]}"')
+            return None
+        return {command: [argv[0], idx]}
+
+
 def process_cmd(arg, expected_argument):
     current_frame = inspect.currentframe()
     calling_frame = current_frame.f_back
@@ -94,24 +108,16 @@ def process_cmd(arg, expected_argument):
     argc = len(argv)
     if CHECK_ARGC[expected_argument](argc):
         command = method_name[3:].title()
-        if expected_argument == Argument.ONE_OR_TWO:
-            if argc == 1:
-                idx = None
-            else:
-                try:
-                    idx = int(argv[1])
-                    assert idx >= 0
-                except (AssertionError, ValueError):
-                    print_error(f'Invalid index: "{argv[1]}"')
-                    return
-        message = json.dumps(
+        message = (
             command
             if expected_argument == Argument.ZERO
-            else {command: [argv[0], idx]}
-            if expected_argument == Argument.ONE_OR_TWO
+            else handle_zero_to_two_arguments(command, argc, argv)
+            if expected_argument == Argument.ZERO_TO_TWO
             else {command: arg or None}
         )
-        send_to_socket(message)
+        if message is None:
+            return
+        send_to_socket(json.dumps(message))
     else:
         argument_string = ARGUMENT_STRING[expected_argument]
         print_error(f"{method_name[3:]} {argument_string}")
@@ -174,11 +180,11 @@ class TaskMasterShell(cmd.Cmd):
 
     def do_start(self, arg):
         """start <name> : Start a process"""
-        process_cmd(arg, Argument.ONE_OR_TWO)
+        process_cmd(arg, Argument.ZERO_TO_TWO)
 
     def do_stop(self, arg):
         """stop <name> : Stop a process"""
-        process_cmd(arg, Argument.ONE_OR_TWO)
+        process_cmd(arg, Argument.ZERO_TO_TWO)
 
     def do_status(self, arg):
         "status        : Get all process status info\nstatus <name> : Get status for a single process"
