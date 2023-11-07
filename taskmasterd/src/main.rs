@@ -93,7 +93,7 @@ fn main() {
 
     if should_daemonize {
         match Daemonize::new()
-            .pid_file("/run/taskmasterd.pid")
+            .pid_file(PID_FILE_PATH)
             .chown_pid_file(true)
             .working_directory(".")
             .start()
