@@ -43,10 +43,10 @@ impl Task {
     }
 
     unsafe fn setup_child_process(&mut self, stderr: Stdio, stdout: Stdio) -> Result<(), String> {
-        let argv: Vec<_> = self.configuration.cmd.split_whitespace().collect();
         let umask_val = self.configuration.umask as mode_t;
-        match Command::new(argv[0])
-            .args(&argv[1..])
+        match Command::new("sh")
+            .arg("-c")
+            .arg(&self.configuration.cmd)
             .current_dir(match &self.configuration.working_dir {
                 Some(cwd) => &cwd,
                 None => ".",
