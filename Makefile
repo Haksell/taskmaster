@@ -1,4 +1,4 @@
-SOCK_FILE := /var/run/taskmaster.sock
+SOCK_FILE := /tmp/taskmaster.sock
 PID_FILE := /var/run/taskmasterd.pid
 
 GARBAGE := *VBox*.log
@@ -25,12 +25,14 @@ cleanvagrant:
 	vagrant destroy -f
 	$(call rm,.vagrant)
 
-daemon:
-	@mkdir -p /tmp/taskmaster 
+tmptaskmaster:
+	@mkdir -p /tmp/taskmaster
+	@chmod 777 /tmp/taskmaster
+
+daemon: tmptaskmaster
 	cargo run --manifest-path taskmasterd/Cargo.toml -- $(CONFIG)
 
-nodaemon:
-	@mkdir -p /tmp/taskmaster 
+nodaemon: tmptaskmaster
 	cargo run --manifest-path taskmasterd/Cargo.toml -- --no-daemonize $(CONFIG)
 
 stop:

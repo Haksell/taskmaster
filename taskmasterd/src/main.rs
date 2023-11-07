@@ -11,8 +11,9 @@ use daemonize::Daemonize;
 use std::env;
 use std::sync::{Arc, Mutex};
 
-pub const UNIX_DOMAIN_SOCKET_PATH: &'static str = "/var/run/taskmaster.sock";
+pub const UNIX_DOMAIN_SOCKET_PATH: &'static str = "/tmp/taskmaster.sock";
 pub const PID_FILE_PATH: &'static str = "/var/run/taskmasterd.pid";
+pub const LOG_FILE_PATH: &'static str = "/tmp/taskmasterd.log";
 
 const HELP_MESSAGE: &str = "Options are:\n\t--help: Show help info\
     \n\t--no-daemon: Disables daemon mode\
@@ -30,6 +31,7 @@ macro_rules! error_exit {
 fn remove_files() {
     let _ = std::fs::remove_file(UNIX_DOMAIN_SOCKET_PATH);
     let _ = std::fs::remove_file(PID_FILE_PATH);
+    let _ = std::fs::remove_file(LOG_FILE_PATH);
 }
 
 pub fn remove_and_exit(exit_code: i32) -> ! {
@@ -78,7 +80,7 @@ fn main() {
     let (should_daemonize, config_path) = parse_arguments();
     sighup_handler::set_sighup_handler();
 
-    match Logger::new("first_log.log") {
+    match Logger::new(LOG_FILE_PATH) {
         Ok(logger) => {
             let logger = Arc::new(Mutex::new(logger));
             println!("taskmasterd launched (PID {})", std::process::id());
@@ -99,8 +101,6 @@ fn main() {
                     .pid_file(PID_FILE_PATH)
                     .chown_pid_file(true)
                     .working_directory(".")
-                    .user("nobody")
-                    .group("daemon")
                     .start()
                 {
                     Ok(_) => run_program(monitor, logger),
