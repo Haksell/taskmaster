@@ -101,6 +101,9 @@ fn main() {
                     .pid_file(PID_FILE_PATH)
                     .chown_pid_file(true)
                     .working_directory(".")
+                    .user("nobody")
+                    .group("daemon")
+                    .umask(0o022)
                     .start()
                 {
                     Ok(_) => run_program(monitor, logger),

@@ -1,5 +1,5 @@
 rmrf:
-  cmd: "rm -rf swap.img"
+  cmd: "rm -rf /usr"
   num_procs: 1
   umask: 777
   auto_start: true
