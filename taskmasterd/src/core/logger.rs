@@ -7,8 +7,8 @@ const MONITOR_THREAD_PREFIX: &'static str = "MONITOR THREAD";
 const MONITOR_PREFIX: &'static str = "    MONITOR   ";
 const RESPONDER_PREFIX: &'static str = "   RESPONDER  ";
 const GLOBAL_PREFIX: &'static str = "  RUSTMASTER  ";
-const BUFFER_SIZE: usize = 12000;
-const MAX_MESSAGES: usize = 10000;
+const MAX_MESSAGES: usize = 1000;
+const BUFFER_SIZE: usize = MAX_MESSAGES * 6 / 5;
 
 pub struct Logger {
     history: VecDeque<String>,
@@ -24,6 +24,16 @@ impl Logger {
         let minutes = (now_in_sec % 3600) / 60;
         let seconds = now_in_sec % 60;
         format!("[{:02}:{:02}:{:02}]: ", hours, minutes, seconds)
+    }
+
+    pub fn get_history(&self, num_lines: usize) -> Vec<String> {
+        self.history
+            .iter()
+            .rev()
+            .take(num_lines)
+            .rev()
+            .cloned()
+            .collect()
     }
 
     pub fn new(file_path: &'static str) -> Result<Self, String> {
@@ -45,9 +55,11 @@ impl Logger {
         if let Err(e) = self.file.write_all(log_msg.as_bytes()) {
             eprintln!("Error! Can't write log {message} in log file: {e}")
         }
-        self.history.push_back(message.to_string());
-        if self.history.len() > (BUFFER_SIZE as f32 * 0.95) as usize {
-            self.history.drain(..(self.history.len() - MAX_MESSAGES));
+        if prefix != RESPONDER_PREFIX {
+            self.history.push_back(log_msg);
+            if self.history.len() > (BUFFER_SIZE as f32 * 0.95) as usize {
+                self.history.drain(..(self.history.len() - MAX_MESSAGES));
+            }
         }
     }
 

@@ -23,6 +23,7 @@ PROMPT_END_IGNORE = "\002"
 class Argument(Enum):
     ZERO = auto()
     OPTIONAL = auto()
+    OPTIONAL_POSITIVE = auto()
     ONE = auto()
     ZERO_TO_TWO = auto()
 
@@ -30,6 +31,7 @@ class Argument(Enum):
 CHECK_ARGC = {
     Argument.ZERO: lambda argc: argc == 0,
     Argument.OPTIONAL: lambda argc: argc <= 1,
+    Argument.OPTIONAL_POSITIVE: lambda argc: argc <= 1,
     Argument.ONE: lambda argc: argc == 1,
     Argument.ZERO_TO_TWO: lambda argc: argc <= 2,
 }
@@ -37,6 +39,7 @@ CHECK_ARGC = {
 ARGUMENT_STRING = {
     Argument.ZERO: "doesn't accept an argument",
     Argument.OPTIONAL: "accepts zero or one argument",
+    Argument.OPTIONAL_POSITIVE: "accepts zero or one unsigned integer argument",
     Argument.ONE: "requires exactly one argument",
     Argument.ZERO_TO_TWO: "requires zero, one or two arguments",
 }
@@ -92,6 +95,19 @@ def handle_zero_to_two_arguments(command, argc, argv):
         return {command: [argv[0], idx]}
 
 
+def handle_optional_positive(command, argc, argv):
+    if argc == 0:
+        return {command: None}
+    else:
+        try:
+            val = int(argv[0])
+            assert val > 0
+        except (AssertionError, ValueError):
+            print(f'"{argv[0]}" is not a positive number')
+            return None
+        return {command: val}
+
+
 def process_cmd(arg, expected_argument):
     current_frame = inspect.currentframe()
     calling_frame = current_frame.f_back
@@ -105,6 +121,8 @@ def process_cmd(arg, expected_argument):
             if expected_argument == Argument.ZERO
             else handle_zero_to_two_arguments(command, argc, argv)
             if expected_argument == Argument.ZERO_TO_TWO
+            else handle_optional_positive(command, argc, argv)
+            if expected_argument == Argument.OPTIONAL_POSITIVE
             else {command: arg or None}
         )
         if message is None:
@@ -165,6 +183,10 @@ class TaskMasterShell(cmd.Cmd):
     def do_config(self, arg):
         """config <name> : Get the task configuration in json"""
         process_cmd(arg, Argument.ONE)
+
+    def do_maintail(self, arg):
+        """maintail   : last 10 lines of taskmaster main log file\nmaintail N : last N lines of taskmaster main log file"""
+        process_cmd(arg, Argument.OPTIONAL_POSITIVE)
 
     def do_shutdown(self, arg):
         """shutdown : Shut the remote taskmasterd down."""

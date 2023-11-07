@@ -407,6 +407,15 @@ impl Monitor {
                     Err(err_msg) => format!("{err_msg}"),
                 }
             }
+            Action::Maintail(arg) => self
+                .logger
+                .lock()
+                .unwrap()
+                .get_history(match arg {
+                    Some(num_lines) => num_lines,
+                    None => 10,
+                })
+                .join(""),
         }
     }
 }
