@@ -458,12 +458,10 @@ impl Monitor {
             Action::HttpLogging(port) => {
                 let mut logger = self.logger.lock().unwrap();
                 return if let Some(port) = port {
-                    Respond::Message(
-                        logger
-                            .enable_http_logging(port)
-                            .map(|_| format!("Connected"))
-                            .unwrap(),
-                    )
+                    Respond::Message(match logger.enable_http_logging(port) {
+                        Ok(_) => "Connected".to_string(),
+                        Err(err) => err,
+                    })
                 } else {
                     Respond::Message(logger.disable_http_logging())
                 };

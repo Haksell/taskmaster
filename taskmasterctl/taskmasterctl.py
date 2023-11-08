@@ -246,8 +246,7 @@ def process_cmd(arg, expected_argument):
         )
         if message is None:
             return
-        print(json.dumps(message))
-        # communicate(json.dumps(message))
+        communicate(json.dumps(message))
     else:
         argument_string = ARGUMENT_STRING.get(expected_argument, "usage:")
         print(f"{method_name[3:]} {argument_string}")
