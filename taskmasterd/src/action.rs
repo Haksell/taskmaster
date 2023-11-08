@@ -24,12 +24,13 @@ impl Display for OutputType {
 
 #[derive(Eq, PartialEq, Serialize, Deserialize, Clone)]
 pub enum Action {
+    Clear(String),
     Config(String),
     HttpLogging(bool, Option<u16>),
     Maintail(TailType),
     Shutdown,
     Restart(Option<(String, Option<usize>)>),
-    Signal(u8, String),
+    Signal(u8, String, Option<usize>),
     Start(Option<(String, Option<usize>)>),
     Status(Option<String>),
     Stop(Option<(String, Option<usize>)>),

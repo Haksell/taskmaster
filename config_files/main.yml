@@ -1,4 +1,4 @@
-task6:
+hello_id:
   cmd: "echo hello $(id)"
   num_procs: 1
   umask: 777
@@ -11,8 +11,8 @@ task6:
   start_time: 0
   stop_signal: USR1
   stop_time: 1
-  stdout: /tmp/taskmaster/task2.stdout
-  stderr: /tmp/taskmaster/task2.stderr
+  stdout: /tmp/taskmaster/hello_id.stdout
+  stderr: /tmp/taskmaster/hello_id.stderr
 
 
 sleep_ls:
@@ -47,7 +47,7 @@ show_signal:
   stdout: /tmp/taskmaster/show_signal.stdout
   stderr: /tmp/taskmaster/show_signal.stderr
 
-task3:
+echo_answer_inf_loop:
   cmd: "./scripts/echo_answer_inf_loop.sh"
   num_procs: 2
   umask: 777
@@ -60,5 +60,4 @@ task3:
   start_time: 10
   stop_signal: USR1
   stop_time: 10
-  stdout: /tmp/taskmaster/task44.stdout
-  stderr: /tmp/taskmaster/task44.stderr
+  stdout: /tmp/taskmaster/echo_answer_inf_loop.stdout

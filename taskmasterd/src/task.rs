@@ -1,5 +1,6 @@
 extern crate libc;
 
+use crate::action::OutputType;
 use crate::configuration::State::*;
 use crate::configuration::{Configuration, State};
 use libc::{mode_t, pid_t};
@@ -133,14 +134,16 @@ impl Task {
         };
     }
 
-    pub fn signal(&self, signum: u8) -> bool {
+    pub fn signal(&self, signum: u8, task_name: &str, idx: usize) -> String {
         match &self.child {
-            None => false,
+            None => format!(
+                "Failed to send signal {signum} to {task_name}[{idx}] because it is not running\n"
+            ),
             Some(child) => {
                 unsafe {
                     libc::kill(child.id() as pid_t, signum as i32);
                 }
-                true
+                format!("{task_name}[{idx}] received signal {signum}\n")
             }
         }
     }
@@ -170,6 +173,41 @@ impl Task {
             STOPPED(_) | EXITED(_) | FATAL(_) => true,
             _ => false,
         }
+    }
+
+    fn clear_log(
+        &self,
+        task_name: &str,
+        file_name: Option<String>,
+        output_type: OutputType,
+    ) -> String {
+        match file_name {
+            None => format!("{task_name} does not have a {output_type} log file\n"),
+            Some(file_name) => match std::fs::File::create(&file_name) {
+                Ok(file) => {
+                    if let Err(e) = file.set_len(0) {
+                        format!("Failed to clear {output_type} log file for {task_name}: {e}\n")
+                    } else {
+                        format!("Cleared {output_type} log file for {task_name}\n")
+                    }
+                }
+                Err(e) => {
+                    format!("Failed to open {output_type} log file for {task_name}: {e}\n")
+                }
+            },
+        }
+    }
+
+    pub fn clear_logs(&self, task_name: &str) -> String {
+        self.clear_log(
+            task_name,
+            self.configuration.stdout.clone(),
+            OutputType::Stdout,
+        ) + &self.clear_log(
+            task_name,
+            self.configuration.stderr.clone(),
+            OutputType::Stderr,
+        )
     }
 }
 
