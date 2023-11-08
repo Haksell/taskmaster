@@ -22,6 +22,7 @@ PROMPT_END_IGNORE = "\002"
 
 
 class Argument(Enum):
+    HTTP = auto()
     MAINTAIL = auto()
     ONE = auto()
     OPTIONAL_POSITIVE = auto()
@@ -33,6 +34,7 @@ class Argument(Enum):
 
 
 CHECK_ARGC = {
+    Argument.HTTP: lambda argc: 1 <= argc <= 2,
     Argument.MAINTAIL: lambda argc: argc <= 1,
     Argument.ONE: lambda argc: argc == 1,
     Argument.OPTIONAL_POSITIVE: lambda argc: argc <= 1,
@@ -44,12 +46,10 @@ CHECK_ARGC = {
 }
 
 ARGUMENT_STRING = {
-    Argument.MAINTAIL: "usage:",
     Argument.ONE: "requires exactly one argument",
     Argument.OPTIONAL_POSITIVE: "accepts zero or one unsigned integer argument",
     Argument.OPTIONAL_STRING: "accepts zero or one argument",
     Argument.SIGNAL: "requires a signal number or name, followed by a task name and an optional index",
-    Argument.TAIL: "usage:",
     Argument.ZERO: "doesn't accept an argument",
     Argument.ZERO_TO_TWO: "requires zero, one or two arguments",
 }
@@ -158,6 +158,28 @@ def handle_signal_arguments(command, argc, argv):
         return {command: [signum, argv[1], idx]}
 
 
+def handle_http_arguments(command, argc, argv):
+    command = "HttpLogging"
+    if argc == 1:
+        if argv[0] != "disable":
+            print(TaskMasterShell.do_http.__doc__)
+            return None
+        else:
+            return {command: None}
+    else:
+        if argv[0] != "enable":
+            print(TaskMasterShell.do_http.__doc__)
+            return None
+        else:
+            try:
+                port = int(argv[1])
+                assert 0 <= port <= 65535
+                return {command: port}
+            except (AssertionError, ValueError):
+                print(f'"{argv[1]}" is not a valid port')
+                return None
+
+
 def get_tail_type(arg):
     if arg.startswith("f"):
         type_string = "Stream"
@@ -218,13 +240,16 @@ def process_cmd(arg, expected_argument):
             if expected_argument == Argument.MAINTAIL
             else handle_tail_argument(command, argc, argv)
             if expected_argument == Argument.TAIL
+            else handle_http_arguments(command, argc, argv)
+            if expected_argument == Argument.HTTP
             else {command: arg or None}
         )
         if message is None:
             return
-        communicate(json.dumps(message))
+        print(json.dumps(message))
+        # communicate(json.dumps(message))
     else:
-        argument_string = ARGUMENT_STRING[expected_argument]
+        argument_string = ARGUMENT_STRING.get(expected_argument, "usage:")
         print(f"{method_name[3:]} {argument_string}")
         class_name = calling_frame.f_locals["self"].__class__.__name__
         method = getattr(eval(class_name, calling_frame.f_globals), method_name, None)
@@ -283,10 +308,13 @@ class TaskMasterShell(cmd.Cmd):
         """config <name> : Get the task configuration in json"""
         process_cmd(arg, Argument.ONE)
 
+    def do_http(self, arg):
+        """http enable <port> : Enable http logging\nhttp disable       : Disable http logging"""
+        process_cmd(arg, Argument.HTTP)
+
     def do_maintail(self, arg):
         """maintail     : complete taskmasterd main log file\nmaintail N   : last N lines of taskmasterd main log file\nmaintail f   : complete and continuous taskmasterd main log file\nmaintail f42 : last N lines of taskmasterd main log file, continuously"""
         process_cmd(arg, Argument.MAINTAIL)
-
 
     def do_restart(self, arg):
         """restart <name> : Restart a process"""
