@@ -131,14 +131,16 @@ impl Task {
         };
     }
 
-    pub fn signal(&self, signum: u8) -> bool {
+    pub fn signal(&self, signum: u8, task_name: &str, idx: usize) -> String {
         match &self.child {
-            None => false,
+            None => format!(
+                "Failed to send signal {signum} to {task_name}[{idx}] because it is not running\n"
+            ),
             Some(child) => {
                 unsafe {
                     libc::kill(child.id() as pid_t, signum as i32);
                 }
-                true
+                format!("{task_name}[{idx}] received signal {signum}\n")
             }
         }
     }

@@ -232,18 +232,22 @@ impl Monitor {
         result
     }
 
-    fn signal_task(&mut self, signum: u8, name: &String) -> String {
+    fn signal_task(&mut self, signum: u8, task_name: &str, idx: Option<usize>) -> String {
         let mut tasks = self.tasks.lock().unwrap();
         let mut logger = self.logger.lock().unwrap();
-        match tasks.get_mut(name) {
-            Some(task_group) => task_group.iter().enumerate().map(|(i, process)|
-                logger.monit_log(if process.signal(signum) {
-                    format!("{name}[{i}] received signal {signum}\n")
-                } else {
-                    format!("Failed to send signal {signum} to {name}[{i}] because it is not running\n")
-                })
-            ).collect(),
-            None => format!("Can't find \"{name}\" task"),
+        match tasks.get_mut(task_name) {
+            Some(task_group) => match idx {
+                Some(idx) => match task_group.get(idx) {
+                    Some(task) => logger.monit_log(task.signal(signum, task_name, idx)),
+                    None => format!("Can't find {task_name}[{idx}] task"),
+                },
+                None => task_group
+                    .iter()
+                    .enumerate()
+                    .map(|(idx, task)| logger.monit_log(task.signal(signum, task_name, idx)))
+                    .collect(),
+            },
+            None => format!("Can't find \"{task_name}\" task"),
         }
     }
 
@@ -388,8 +392,8 @@ impl Monitor {
                 }
             },
             Action::Shutdown => remove_and_exit(0),
-            Action::Signal(signum, task_name) => {
-                Respond::Message(self.signal_task(signum, &task_name))
+            Action::Signal(signum, task_name, idx) => {
+                Respond::Message(self.signal_task(signum, &task_name, idx))
             }
             Action::Start(arg) => match arg {
                 Some((task_name, num)) => Respond::Message(self.start_task(&task_name, &num)),

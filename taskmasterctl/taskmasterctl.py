@@ -37,7 +37,7 @@ CHECK_ARGC = {
     Argument.ONE: lambda argc: argc == 1,
     Argument.OPTIONAL_POSITIVE: lambda argc: argc <= 1,
     Argument.OPTIONAL_STRING: lambda argc: argc <= 1,
-    Argument.SIGNAL: lambda argc: argc == 2,
+    Argument.SIGNAL: lambda argc: 2 <= argc <= 3,
     Argument.TAIL: lambda argc: 2 <= argc <= 3,
     Argument.ZERO_TO_TWO: lambda argc: argc <= 2,
     Argument.ZERO: lambda argc: argc == 0,
@@ -48,7 +48,7 @@ ARGUMENT_STRING = {
     Argument.ONE: "requires exactly one argument",
     Argument.OPTIONAL_POSITIVE: "accepts zero or one unsigned integer argument",
     Argument.OPTIONAL_STRING: "accepts zero or one argument",
-    Argument.SIGNAL: "requires a signal number or name, followed by a task name",
+    Argument.SIGNAL: "requires a signal number or name, followed by a task name and an optional index",
     Argument.TAIL: "usage:",
     Argument.ZERO: "doesn't accept an argument",
     Argument.ZERO_TO_TWO: "requires zero, one or two arguments",
@@ -96,19 +96,24 @@ def communicate(message):
         print(f"Unknown error: {e}")
 
 
+def parse_index(s):
+    try:
+        idx = int(s)
+        assert idx >= 0
+        return idx
+    except (AssertionError, ValueError):
+        print(f'Invalid index: "{s}"')
+        return None
+
+
 def handle_zero_to_two_arguments(command, argc, argv):
     if argc == 0:
         return {command: None}
     elif argc == 1:
         return {command: [argv[0], None]}
     else:
-        try:
-            idx = int(argv[1])
-            assert idx >= 0
-        except (AssertionError, ValueError):
-            print(f'Invalid index: "{argv[1]}"')
-            return None
-        return {command: [argv[0], idx]}
+        idx = parse_index(argv[1])
+        return None if idx is None else {command: [argv[0], idx]}
 
 
 def handle_optional_positive(command, argc, argv):
@@ -124,7 +129,7 @@ def handle_optional_positive(command, argc, argv):
         return {command: val}
 
 
-def handle_signal_arguments(command, argv):
+def handle_signal_arguments(command, argc, argv):
     def get_signum(sigstr):
         try:
             n = int(sigstr)
@@ -143,7 +148,14 @@ def handle_signal_arguments(command, argv):
     if signum is None:
         print(f'"{argv[0]}" is not a valid signal')
         return None
-    return {command: [signum, argv[1]]}
+
+    if argc == 2:
+        return {command: [signum, argv[1], None]}
+    else:
+        idx = parse_index(argv[2])
+        if idx is None:
+            return None
+        return {command: [signum, argv[1], idx]}
 
 
 def get_tail_type(arg):
@@ -200,7 +212,7 @@ def process_cmd(arg, expected_argument):
             if expected_argument == Argument.ZERO_TO_TWO
             else handle_optional_positive(command, argc, argv)
             if expected_argument == Argument.OPTIONAL_POSITIVE
-            else handle_signal_arguments(command, argv)
+            else handle_signal_arguments(command, argc, argv)
             if expected_argument == Argument.SIGNAL
             else handle_maintail_argument(command, argv[0] if argv else "")
             if expected_argument == Argument.MAINTAIL
@@ -276,7 +288,7 @@ class TaskMasterShell(cmd.Cmd):
         process_cmd(arg, Argument.ZERO)
 
     def do_signal(self, arg):
-        """signal <signum or signame> <taskname> : Signal a process"""
+        """signal <signum or signame> <taskname>       : Signal a task group\nsignal <signum or signame> <taskname> <idx> : Signal a task"""
         process_cmd(arg, Argument.SIGNAL)
 
     def do_start(self, arg):

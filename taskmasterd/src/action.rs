@@ -27,7 +27,7 @@ pub enum Action {
     Config(String),
     Maintail(TailType),
     Shutdown,
-    Signal(u8, String),
+    Signal(u8, String, Option<usize>),
     Start(Option<(String, Option<usize>)>),
     Status(Option<String>),
     Stop(Option<(String, Option<usize>)>),
