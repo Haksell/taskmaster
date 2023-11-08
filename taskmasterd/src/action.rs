@@ -25,8 +25,10 @@ impl Display for OutputType {
 #[derive(Eq, PartialEq, Serialize, Deserialize, Clone)]
 pub enum Action {
     Config(String),
+    HttpLogging(bool, Option<u16>),
     Maintail(TailType),
     Shutdown,
+    Restart(Option<(String, Option<usize>)>),
     Signal(u8, String),
     Start(Option<(String, Option<usize>)>),
     Status(Option<String>),

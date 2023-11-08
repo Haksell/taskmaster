@@ -271,6 +271,11 @@ class TaskMasterShell(cmd.Cmd):
         """maintail     : complete taskmasterd main log file\nmaintail N   : last N lines of taskmasterd main log file\nmaintail f   : complete and continuous taskmasterd main log file\nmaintail f42 : last N lines of taskmasterd main log file, continuously"""
         process_cmd(arg, Argument.MAINTAIL)
 
+
+    def do_restart(self, arg):
+        """restart <name> : Restart a process"""
+        process_cmd(arg, Argument.ZERO_TO_TWO)
+
     def do_shutdown(self, arg):
         """shutdown : Shut the remote taskmasterd down."""
         process_cmd(arg, Argument.ZERO)

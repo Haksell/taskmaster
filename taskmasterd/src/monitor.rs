@@ -135,6 +135,56 @@ impl Monitor {
         };
     }
 
+    fn restart_task(&mut self, name: &String, num: &Option<usize>) -> String {
+        let mut tasks = self.tasks.lock().unwrap();
+        let mut logger = self.logger.lock().unwrap();
+        let mut result = String::new();
+        if let Some(task_group) = tasks.get_mut(name) {
+            match num {
+                None => {
+                    logger.monit_log(format!("All task in {name} will be restarted"));
+                    for (i, process) in task_group.iter_mut().enumerate() {
+                        if let RUNNING(_) = process.state {
+                            if let Err(e_msg) = process.stop() {
+                                result += &logger.monit_log(format!(
+                                    "{name}[{i}]: Error during the restart: {e_msg}\n"
+                                ));
+                            } else {
+                                process.is_manual_restarting = true;
+                                result += &logger.monit_log(format!("{name}[{i}]: Restarting...\n"))
+                            }
+                        } else {
+                            result += &logger.monit_log(format!(
+                                "{name}[{i}]: Can't be restarted. Current status {}. Required status: \"Running\"\n",
+                                process.state
+                            ))
+                        }
+                    }
+                }
+                Some(index) => match task_group.get_mut(*index) {
+                    None => {
+                        result += &logger.monit_log(format!(
+                            "{name}[{index}]: Can't be restarted, it doesn't exist\n"
+                        ))
+                    }
+                    Some(task) => match task.stop() {
+                        Ok(_) => {
+                            task.is_manual_restarting = true;
+                            result += &logger.monit_log(format!("{name}[{index}]: Restarting...\n"))
+                        }
+                        Err(err) => {
+                            result += &logger
+                                .monit_log(format!("{name}[{index}]: Can't be restarted: {err}\n"))
+                        }
+                    },
+                },
+            }
+        } else {
+            result = format!("Can't find \"{name}\" task")
+        }
+        result
+    }
+
     fn stop_task(&mut self, name: &String, num: &Option<usize>) -> String {
         let mut tasks = self.tasks.lock().unwrap();
         let mut logger = self.logger.lock().unwrap();
@@ -178,7 +228,7 @@ impl Monitor {
                 },
             }
         } else {
-            return format!("Can't find \"{name}\" task");
+            result = format!("Can't find \"{name}\" task")
         }
         result
     }
@@ -227,7 +277,7 @@ impl Monitor {
                 },
             }
         } else {
-            return format!("Can't find \"{name}\" task");
+            result = format!("Can't find \"{name}\" task")
         }
         result
     }
@@ -339,6 +389,16 @@ impl Monitor {
                                 let _ = process.kill();
                             }
                         }
+                        if let STOPPED(_) = process.state {
+                            if process.is_manual_restarting {
+                                process.is_manual_restarting = false;
+                                logger.sth_log(format!(
+                                    "{name}[{i}]: Starting after manual restarting"
+                                ));
+                                //TODO: handle
+                                let _ = process.run();
+                            }
+                        }
                         match &mut process.child {
                             Some(child) => match child.try_wait() {
                                 Ok(Some(status)) => {
@@ -381,10 +441,47 @@ impl Monitor {
                 None => Respond::Message(format!("Can't find \"{task_name}\" task")),
                 Some(task) => Respond::Message(format!("{task_name}: {task}")),
             },
+            Action::HttpLogging(to_enable, port) => {
+                if to_enable {
+                    return if let Some(port) = port {
+                        let mut logger = self.logger.lock().unwrap();
+                        Respond::Message(
+                            logger
+                                .enable_http_logging(port)
+                                .map(|_| format!("Connected"))
+                                .unwrap(),
+                        )
+                    } else {
+                        Respond::Message(
+                            "Can't enable http logging without specified port".to_string(),
+                        )
+                    };
+                }
+                let mut logger = self.logger.lock().unwrap();
+                Respond::Message(logger.disable_http_logging())
+            }
             Action::Maintail(arg) => match arg {
                 TailType::Stream(num_lines) => Respond::MaintailStream(num_lines),
                 TailType::Fixed(num_lines) => {
                     Respond::Message(self.logger.lock().unwrap().get_history(num_lines).join(""))
+                }
+            },
+            Action::Restart(arg) => match arg {
+                Some((task_name, num)) => Respond::Message(self.restart_task(&task_name, &num)),
+                None => {
+                    let tasks = self
+                        .tasks
+                        .lock()
+                        .unwrap()
+                        .keys()
+                        .cloned()
+                        .collect::<Vec<String>>();
+                    Respond::Message(
+                        tasks
+                            .iter()
+                            .map(|task_name| self.restart_task(&task_name, &None))
+                            .collect(),
+                    )
                 }
             },
             Action::Shutdown => remove_and_exit(0),

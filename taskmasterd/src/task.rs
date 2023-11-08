@@ -15,11 +15,13 @@ pub struct Task {
     pub restarts_left: u32,
     pub child: Option<Child>,
     pub exit_code: Option<i32>,
+    pub is_manual_restarting: bool,
 }
 
 impl Task {
     pub fn new(configuration: &Configuration) -> Task {
         Task {
+            is_manual_restarting: false,
             restarts_left: configuration.start_retries,
             configuration: configuration.clone(),
             state: STOPPED(None),
