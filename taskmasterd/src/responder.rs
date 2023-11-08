@@ -3,9 +3,10 @@ use crate::logger::{LogLine, Logger};
 use crate::monitor::Monitor;
 use crate::responder::Respond::Message;
 use crate::{remove_and_exit, UNIX_DOMAIN_SOCKET_PATH};
+use libc::write;
 use std::borrow::Cow;
 use std::collections::VecDeque;
-use std::io::{Read, Write};
+use std::io::{stdout, Read, Seek, Write};
 use std::os::unix::fs::PermissionsExt;
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::sync::{Arc, Mutex};
@@ -48,7 +49,9 @@ impl Responder {
         };
     }
 
-    fn write_message(&mut self, mut stream: UnixStream, respond: Respond) {
+    //TODO: fn write()
+
+    fn handle_response(&mut self, mut stream: UnixStream, respond: Respond) {
         let mut logger = self.logger.lock().unwrap();
         match respond {
             Message(message) => {
@@ -118,21 +121,71 @@ impl Responder {
             }
 
             Respond::Tail(filename, num_lines, is_stream) => {
-                let mut file = match std::fs::File::open(&filename) {
-                    Ok(file) => file,
-                    Err(err) => {
-                        let _ = stream
-                            .write(format!("Error opening file {filename}: {err}").as_bytes())
-                            .map_err(|_| eprint!("Can't respond to client"));
-                        return;
+                match fs::File::open(&filename) {
+                    Ok(mut file) => {
+                        let mut buffer = String::new();
+                        match file.read_to_string(&mut buffer) {
+                            Ok(_) => {
+                                print!("{buffer}");
+                                stdout().flush().unwrap(); //FIXME: handle
+                                match num_lines {
+                                    None => {
+                                        stream.write(buffer.as_bytes()).unwrap();
+                                    } //FIXME: handle,
+                                    Some(num) => {
+                                        let mut lines: Vec<String> = buffer
+                                            .lines()
+                                            .rev()
+                                            .take(num)
+                                            .map(String::from)
+                                            .collect();
+                                        lines = lines.iter().cloned().rev().collect();
+                                        stream.write(lines.join("").as_bytes()).unwrap(); //TODO: handle
+                                        stream.flush().unwrap(); //TODO: handle
+                                        let mut last_size = fs::metadata(&filename).unwrap().len(); //TODO: handle
+                                        if is_stream {
+                                            thread::spawn(move || loop {
+                                                thread::sleep(Duration::from_millis(100));
+                                                let new_size =
+                                                    fs::metadata(&filename).unwrap().len(); //TODO: handle
+                                                if new_size < last_size {
+                                                    if let Err(e) = stream.write(
+                                                        format!(
+                                                        "\n\ntail: {filename}: file truncated\n"
+                                                    )
+                                                        .as_bytes(),
+                                                    ) {
+                                                        eprintln!("{e}");
+                                                        break;
+                                                    }
+                                                    stream.flush().unwrap(); //TODO: handle
+                                                    file.seek(std::io::SeekFrom::Start(0)).unwrap();
+                                                } else if new_size == last_size {
+                                                    continue;
+                                                }
+                                                let mut new_content = String::new();
+                                                file.read_to_string(&mut new_content).unwrap(); //TODO: handle
+
+                                                if let Err(e) = stream.write(new_content.as_bytes())
+                                                {
+                                                    eprintln!("{e}");
+                                                    break;
+                                                }
+                                                stream.flush().unwrap();
+                                                last_size = new_size;
+                                            });
+                                        }
+                                    }
+                                }
+                            }
+                            Err(_) => {
+                                eprintln!("Can't read file")
+                            }
+                        }
                     }
-                };
-                let mut buffer = String::new();
-                if let Err(err) = file.read_to_string(&mut buffer) {
-                    let _ = stream
-                        .write(format!("Error reading file {filename}: {err}").as_bytes())
-                        .map_err(|_| eprint!("Can't respond to client"));
-                    return;
+                    Err(_) => {
+                        eprintln!("Can't open file")
+                    }
                 }
             }
         }
@@ -146,14 +199,14 @@ impl Responder {
         match serde_json::from_str::<Action>(received_data.to_string().as_str()) {
             Ok(action) => {
                 let answer = self.monitor.answer(action);
-                self.write_message(stream, answer);
+                self.handle_response(stream, answer);
             }
             Err(error) => {
                 {
                     let mut logger = self.logger.lock().unwrap();
                     logger.resp_log(format!("Unknown action: {received_data}: {error}"));
                 }
-                self.write_message(stream, Message("Unknown action".to_string()));
+                self.handle_response(stream, Message("Unknown action".to_string()));
             }
         }
     }
