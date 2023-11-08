@@ -72,6 +72,9 @@ def communicate(message):
             while True:
                 try:
                     part = s.recv(BUFFER_SIZE).decode()
+                except KeyboardInterrupt:
+                    print()
+                    return
                 except Exception as e:
                     print(f"Failed to read from taskmasterd: {e}")
                     return
