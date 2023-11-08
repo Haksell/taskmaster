@@ -26,7 +26,7 @@ impl Display for OutputType {
 pub enum Action {
     Clear(String),
     Config(String),
-    HttpLogging(bool, Option<u16>),
+    HttpLogging(Option<u16>),
     Maintail(TailType),
     Shutdown,
     Restart(Option<(String, Option<usize>)>),
