@@ -455,24 +455,18 @@ impl Monitor {
                 None => Respond::Message(format!("Can't find \"{task_name}\" task")),
                 Some(task) => Respond::Message(format!("{task_name}: {task}")),
             },
-            Action::HttpLogging(to_enable, port) => {
-                if to_enable {
-                    return if let Some(port) = port {
-                        let mut logger = self.logger.lock().unwrap();
-                        Respond::Message(
-                            logger
-                                .enable_http_logging(port)
-                                .map(|_| format!("Connected"))
-                                .unwrap(),
-                        )
-                    } else {
-                        Respond::Message(
-                            "Can't enable http logging without specified port".to_string(),
-                        )
-                    };
-                }
+            Action::HttpLogging(port) => {
                 let mut logger = self.logger.lock().unwrap();
-                Respond::Message(logger.disable_http_logging())
+                return if let Some(port) = port {
+                    Respond::Message(
+                        logger
+                            .enable_http_logging(port)
+                            .map(|_| format!("Connected"))
+                            .unwrap(),
+                    )
+                } else {
+                    Respond::Message(logger.disable_http_logging())
+                };
             }
             Action::Maintail(arg) => match arg {
                 TailType::Stream(num_lines) => Respond::MaintailStream(num_lines),
