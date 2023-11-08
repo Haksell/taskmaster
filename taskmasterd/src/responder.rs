@@ -14,7 +14,7 @@ use std::{fs, thread};
 
 pub enum Respond {
     Message(String),
-    MaintailStream,
+    MaintailStream(Option<usize>),
     TailStream(String),
 }
 
@@ -63,12 +63,23 @@ impl Responder {
                     logger.resp_log(format!("Can't flush the stdout: {e}"));
                 }
             }
-            Respond::MaintailStream => {
+            Respond::MaintailStream(num_lines) => {
                 let logger_clone = self.logger.clone();
                 thread::spawn(move || {
                     let mut history_buffer: VecDeque<LogLine> = {
                         let logger = logger_clone.lock().unwrap();
-                        logger.history.clone()
+                        if let Some(num_lines) = num_lines {
+                            logger
+                                .history
+                                .iter()
+                                .rev()
+                                .take(num_lines)
+                                .rev()
+                                .cloned()
+                                .collect()
+                        } else {
+                            logger.history.clone()
+                        }
                     };
                     let mut last_logged_idx = 0usize;
 

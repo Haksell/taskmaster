@@ -29,11 +29,11 @@ impl Logger {
         format!("[{:02}:{:02}:{:02}]: ", hours, minutes, seconds)
     }
 
-    pub fn get_history(&self, num_lines: usize) -> Vec<String> {
+    pub fn get_history(&self, num_lines: Option<usize>) -> Vec<String> {
         self.history
             .iter()
             .rev()
-            .take(num_lines)
+            .take(num_lines.unwrap_or(self.history.len()))
             .rev()
             .map(|(_, message)| message.to_string())
             .collect()
@@ -53,7 +53,11 @@ impl Logger {
     }
 
     fn do_log(&mut self, prefix: &'static str, message: &str) {
-        let log_msg = format!("[{prefix}]: {}{:?}\n", Logger::get_timestamp(), message);
+        let log_msg = format!(
+            "[{prefix}]: {}{:?}\n",
+            Logger::get_timestamp(),
+            message.trim()
+        );
         print!("{log_msg}");
         if let Err(e) = self.file.write_all(log_msg.as_bytes()) {
             eprintln!("Error! Can't write log {message} in log file: {e}")

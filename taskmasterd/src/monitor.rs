@@ -1,10 +1,9 @@
-use crate::action::Action;
+use crate::action::{Action, TailType};
 use crate::configuration::State::{BACKOFF, EXITED, FATAL, RUNNING, STARTING, STOPPED, STOPPING};
 use crate::configuration::{AutoRestart, Configuration};
 use crate::logger::Logger;
 use crate::remove_and_exit;
-use crate::responder::Respond;
-use crate::responder::Respond::{MaintailStream, Message};
+use crate::responder::Respond::{self, MaintailStream, Message};
 use crate::task::Task;
 use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
@@ -382,23 +381,13 @@ impl Monitor {
                 None => Message(format!("Can't find \"{task_name}\" task")),
                 Some(task) => Message(format!("{task_name}: {task}")),
             },
-            Action::Tail(task_name, output_type) => Message(String::new()),
-            Action::Maintail(arg) => Message(
-                self.logger
-                    .lock()
-                    .unwrap()
-                    .get_history(match arg {
-                        Some(num_lines) => {
-                            if num_lines == 42 {
-                                //TODO: handle good arg value
-                                return MaintailStream;
-                            }
-                            num_lines
-                        }
-                        None => 10,
-                    })
-                    .join(""),
-            ),
+            Action::Tail(_, _, _) => Message(String::new()),
+            Action::Maintail(arg) => match arg {
+                TailType::Stream(num_lines) => MaintailStream(num_lines),
+                TailType::Fixed(num_lines) => {
+                    Message(self.logger.lock().unwrap().get_history(num_lines).join(""))
+                }
+            },
             Action::Shutdown => remove_and_exit(0),
             Action::Signal(signum, task_name) => Message(self.signal_task(signum, &task_name)),
             Action::Start(arg) => match arg {

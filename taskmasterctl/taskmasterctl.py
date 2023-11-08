@@ -22,34 +22,37 @@ PROMPT_END_IGNORE = "\002"
 
 
 class Argument(Enum):
-    ZERO = auto()
-    OPTIONAL_STRING = auto()
-    OPTIONAL_POSITIVE = auto()
+    MAINTAIL = auto()
     ONE = auto()
-    ZERO_TO_TWO = auto()
+    OPTIONAL_POSITIVE = auto()
+    OPTIONAL_STRING = auto()
     SIGNAL = auto()
+    ZERO = auto()
+    ZERO_TO_TWO = auto()
 
 
 CHECK_ARGC = {
-    Argument.ZERO: lambda argc: argc == 0,
-    Argument.OPTIONAL_STRING: lambda argc: argc <= 1,
-    Argument.OPTIONAL_POSITIVE: lambda argc: argc <= 1,
+    Argument.MAINTAIL: lambda argc: argc <= 1,
     Argument.ONE: lambda argc: argc == 1,
-    Argument.ZERO_TO_TWO: lambda argc: argc <= 2,
+    Argument.OPTIONAL_POSITIVE: lambda argc: argc <= 1,
+    Argument.OPTIONAL_STRING: lambda argc: argc <= 1,
     Argument.SIGNAL: lambda argc: argc == 2,
+    Argument.ZERO_TO_TWO: lambda argc: argc <= 2,
+    Argument.ZERO: lambda argc: argc == 0,
 }
 
 ARGUMENT_STRING = {
-    Argument.ZERO: "doesn't accept an argument",
-    Argument.OPTIONAL_STRING: "accepts zero or one argument",
-    Argument.OPTIONAL_POSITIVE: "accepts zero or one unsigned integer argument",
+    Argument.MAINTAIL: "usage:",
     Argument.ONE: "requires exactly one argument",
-    Argument.ZERO_TO_TWO: "requires zero, one or two arguments",
+    Argument.OPTIONAL_POSITIVE: "accepts zero or one unsigned integer argument",
+    Argument.OPTIONAL_STRING: "accepts zero or one argument",
     Argument.SIGNAL: "requires a signal number or name, followed by a task name",
+    Argument.ZERO: "doesn't accept an argument",
+    Argument.ZERO_TO_TWO: "requires zero, one or two arguments",
 }
 
 
-def send_to_socket(message):
+def communicate(message):
     try:
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
             try:
@@ -77,6 +80,8 @@ def send_to_socket(message):
                 print(part, flush=True, end="")
                 if not part.endswith("\n"):
                     needs_newline = True
+                else:
+                    needs_newline = False
             if needs_newline:
                 print()
             elif message == '"Shutdown"':
@@ -135,6 +140,25 @@ def handle_signal_arguments(command, argv):
     return {command: [signum, argv[1]]}
 
 
+def handle_maintail_argument(command, arg):
+    if arg.startswith("f"):
+        type_string = "Stream"
+        arg = arg[1:]
+    else:
+        type_string = "Fixed"
+    if arg == "":
+        return {command: {type_string: None}}
+    if all(c == "0" for c in arg):
+        print(f"Can't request 0 line from taskmasterd")
+        return None
+    try:
+        num_lines = int(arg)
+        return {command: {type_string: num_lines}}
+    except ValueError:
+        print(f'"{arg}" is not a valid number of lines')
+        return None
+
+
 def process_cmd(arg, expected_argument):
     current_frame = inspect.currentframe()
     calling_frame = current_frame.f_back
@@ -152,11 +176,13 @@ def process_cmd(arg, expected_argument):
             if expected_argument == Argument.OPTIONAL_POSITIVE
             else handle_signal_arguments(command, argv)
             if expected_argument == Argument.SIGNAL
+            else handle_maintail_argument(command, argv[0] if argv else "")
+            if expected_argument == Argument.MAINTAIL
             else {command: arg or None}
         )
         if message is None:
             return
-        send_to_socket(json.dumps(message))
+        communicate(json.dumps(message))
     else:
         argument_string = ARGUMENT_STRING[expected_argument]
         print(f"{method_name[3:]} {argument_string}")
@@ -214,8 +240,8 @@ class TaskMasterShell(cmd.Cmd):
         process_cmd(arg, Argument.ONE)
 
     def do_maintail(self, arg):
-        """maintail   : last 10 lines of taskmaster main log file\nmaintail N : last N lines of taskmaster main log file"""
-        process_cmd(arg, Argument.OPTIONAL_POSITIVE)
+        """maintail     : complete taskmasterd main log file\nmaintail N   : last N lines of taskmasterd main log file\nmaintail f   : complete and continuous taskmasterd main log file\nmaintail f42 : last N lines of taskmasterd main log file, continuously"""
+        process_cmd(arg, Argument.MAINTAIL)
 
     def do_shutdown(self, arg):
         """shutdown : Shut the remote taskmasterd down."""
