@@ -1,9 +1,8 @@
 use crate::action::Action;
-use crate::logger::Logger;
+use crate::logger::{LogLine, Logger};
 use crate::monitor::Monitor;
 use crate::responder::Respond::Message;
 use crate::{remove_and_exit, UNIX_DOMAIN_SOCKET_PATH};
-use libc::printf;
 use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::io::{Read, Write};
@@ -67,19 +66,19 @@ impl Responder {
             Respond::MaintailStream => {
                 let logger_clone = self.logger.clone();
                 thread::spawn(move || {
-                    let mut history_buffer: VecDeque<String> = {
+                    let mut history_buffer: VecDeque<LogLine> = {
                         let logger = logger_clone.lock().unwrap();
                         logger.history.clone()
                     };
-                    let mut last_logged_message: String = String::new();
+                    let mut last_logged_idx = 0usize;
 
                     'outer: loop {
                         let logger = logger_clone.lock().unwrap();
 
                         while !history_buffer.is_empty() {
-                            if let Some(message) = history_buffer.pop_front() {
-                                last_logged_message = message;
-                                if let Err(err) = stream.write(last_logged_message.as_bytes()) {
+                            if let Some((idx, message)) = history_buffer.pop_front() {
+                                last_logged_idx = idx;
+                                if let Err(err) = stream.write(message.as_bytes()) {
                                     eprintln!("Exiting maintail -f: {:?}", err);
                                     break 'outer;
                                 }
@@ -91,33 +90,24 @@ impl Responder {
                         }
 
                         let history = logger.history.clone();
-                        let to_append: Vec<String> = history
+                        let to_append: Vec<_> = history
                             .iter()
-                            .skip_while(|elem| **elem != last_logged_message)
+                            .skip_while(|(idx, _)| *idx != last_logged_idx)
+                            .skip(1)
                             .cloned()
                             .collect();
                         for element in to_append.iter() {
-                            if *element != last_logged_message {
-                                history_buffer.push_back(element.clone());
-                            }
+                            history_buffer.push_back(element.clone());
                         }
 
                         drop(logger);
-
-                        thread::sleep(Duration::from_millis(150));
+                        thread::sleep(Duration::from_millis(100));
                     }
                 });
             }
 
             Respond::TailStream(_) => {}
         }
-        /*
-        loop {
-            stream.write(b"sa");
-            stream.flush();
-            thread::sleep(Duration::from_secs(1));
-        }
-         */
     }
 
     fn handle_message(&mut self, stream: UnixStream, received_data: Cow<str>) {

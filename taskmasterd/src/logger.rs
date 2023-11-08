@@ -10,9 +10,12 @@ const GLOBAL_PREFIX: &'static str = "  RUSTMASTER  ";
 const MAX_MESSAGES: usize = 1000;
 const BUFFER_SIZE: usize = MAX_MESSAGES * 6 / 5;
 
+pub type LogLine = (usize, String);
+
 pub struct Logger {
-    pub history: VecDeque<String>,
+    pub history: VecDeque<LogLine>,
     file: File,
+    idx: usize,
 }
 
 impl Logger {
@@ -32,7 +35,7 @@ impl Logger {
             .rev()
             .take(num_lines)
             .rev()
-            .cloned()
+            .map(|(_, message)| message.to_string())
             .collect()
     }
 
@@ -45,6 +48,7 @@ impl Logger {
         Ok(Logger {
             history: VecDeque::with_capacity(BUFFER_SIZE),
             file,
+            idx: 0,
         })
     }
 
@@ -56,7 +60,8 @@ impl Logger {
             eprintln!("Error! Can't write log {message} in log file: {e}")
         }
         if prefix != RESPONDER_PREFIX {
-            self.history.push_back(log_msg);
+            self.idx = self.idx.wrapping_add(1);
+            self.history.push_back((self.idx, log_msg));
             if self.history.len() > (BUFFER_SIZE as f32 * 0.95) as usize {
                 self.history.drain(..(self.history.len() - MAX_MESSAGES));
             }
