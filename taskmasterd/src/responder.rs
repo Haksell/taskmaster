@@ -3,7 +3,6 @@ use crate::logger::{LogLine, Logger};
 use crate::monitor::Monitor;
 use crate::responder::Respond::Message;
 use crate::{remove_and_exit, UNIX_DOMAIN_SOCKET_PATH};
-use libc::write;
 use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::io::{stdout, Read, Seek, Write};
@@ -119,7 +118,6 @@ impl Responder {
                     }
                 });
             }
-
             Respond::Tail(filename, num_lines, is_stream) => {
                 match fs::File::open(&filename) {
                     Ok(mut file) => {
@@ -140,42 +138,45 @@ impl Responder {
                                             .map(String::from)
                                             .collect();
                                         lines = lines.iter().cloned().rev().collect();
-                                        stream.write(lines.join("").as_bytes()).unwrap(); //TODO: handle
+                                        stream
+                                            .write(
+                                                lines
+                                                    .iter()
+                                                    .map(|line| line.to_string() + "\n")
+                                                    .collect::<String>()
+                                                    .as_bytes(),
+                                            )
+                                            .unwrap(); //TODO: handle
                                         stream.flush().unwrap(); //TODO: handle
-                                        let mut last_size = fs::metadata(&filename).unwrap().len(); //TODO: handle
-                                        if is_stream {
-                                            thread::spawn(move || loop {
-                                                thread::sleep(Duration::from_millis(100));
-                                                let new_size =
-                                                    fs::metadata(&filename).unwrap().len(); //TODO: handle
-                                                if new_size < last_size {
-                                                    if let Err(e) = stream.write(
-                                                        format!(
-                                                        "\n\ntail: {filename}: file truncated\n"
-                                                    )
-                                                        .as_bytes(),
-                                                    ) {
-                                                        eprintln!("{e}");
-                                                        break;
-                                                    }
-                                                    stream.flush().unwrap(); //TODO: handle
-                                                    file.seek(std::io::SeekFrom::Start(0)).unwrap();
-                                                } else if new_size == last_size {
-                                                    continue;
-                                                }
-                                                let mut new_content = String::new();
-                                                file.read_to_string(&mut new_content).unwrap(); //TODO: handle
-
-                                                if let Err(e) = stream.write(new_content.as_bytes())
-                                                {
-                                                    eprintln!("{e}");
-                                                    break;
-                                                }
-                                                stream.flush().unwrap();
-                                                last_size = new_size;
-                                            });
-                                        }
                                     }
+                                }
+                                if is_stream {
+                                    let mut last_size = fs::metadata(&filename).unwrap().len(); //TODO: handle
+                                    thread::spawn(move || loop {
+                                        thread::sleep(Duration::from_millis(100));
+                                        let new_size = fs::metadata(&filename).unwrap().len(); //TODO: handle
+                                        if new_size < last_size {
+                                            if let Err(e) = stream.write(
+                                                format!("\n\ntail: {filename}: file truncated\n")
+                                                    .as_bytes(),
+                                            ) {
+                                                eprintln!("{e}");
+                                                break;
+                                            }
+                                            stream.flush().unwrap(); //TODO: handle
+                                            file.seek(std::io::SeekFrom::Start(0)).unwrap();
+                                        } else if new_size == last_size {
+                                            continue;
+                                        }
+                                        let mut new_content = String::new();
+                                        file.read_to_string(&mut new_content).unwrap(); //TODO: handle
+                                        if let Err(e) = stream.write(new_content.as_bytes()) {
+                                            eprintln!("{e}");
+                                            break;
+                                        }
+                                        stream.flush().unwrap();
+                                        last_size = new_size;
+                                    });
                                 }
                             }
                             Err(_) => {

@@ -428,7 +428,7 @@ impl Monitor {
                     )
                 }
             },
-            Action::Tail(task_name, tail_type, output_type) => {
+            Action::Tail(task_name, output_type, tail_type) => {
                 let tasks = self.tasks.lock().unwrap();
                 if let Some(task) = tasks.get(&task_name).unwrap_or(&Vec::new()).get(0) {
                     let filename = match output_type {

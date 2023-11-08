@@ -31,6 +31,6 @@ pub enum Action {
     Start(Option<(String, Option<usize>)>),
     Status(Option<String>),
     Stop(Option<(String, Option<usize>)>),
-    Tail(String, TailType, OutputType),
+    Tail(String, OutputType, TailType),
     Update(Option<String>),
 }
