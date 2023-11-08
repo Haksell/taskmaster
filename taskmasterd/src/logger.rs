@@ -52,7 +52,6 @@ impl Logger {
         })
     }
 
-    //fn do_log<S: AsRef<str>>(&mut self, message: S) -> S {
     fn do_log(&mut self, prefix: &'static str, message: &str) {
         let log_msg = format!("[{prefix}]: {}{:?}\n", Logger::get_timestamp(), message);
         print!("{log_msg}");

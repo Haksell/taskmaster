@@ -65,20 +65,20 @@ def send_to_socket(message):
             except Exception as e:
                 print(f"Failed to write to taskmasterd: {e}")
                 return
-            response_parts = []
+            needs_newline = False
             while True:
                 try:
-                    part = s.recv(BUFFER_SIZE)
+                    part = s.recv(BUFFER_SIZE).decode()
                 except Exception as e:
                     print(f"Failed to read from taskmasterd: {e}")
                     return
                 if not part:
                     break
-                print(f"{part.decode().rstrip()}", flush=True) #need print in the loop and handle signal to quit
-                response_parts.append(part)
-            response = b"".join(response_parts).decode().rstrip()
-            if response:
-                print(response)
+                print(part, flush=True, end="")
+                if not part.endswith("\n"):
+                    needs_newline = True
+            if needs_newline:
+                print()
             elif message == '"Shutdown"':
                 print("Shutdown successful")
     except Exception as e:
