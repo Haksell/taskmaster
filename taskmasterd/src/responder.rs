@@ -15,7 +15,7 @@ use std::{fs, thread};
 pub enum Respond {
     Message(String),
     MaintailStream(Option<usize>),
-    TailStream(String),
+    Tail(String, Option<usize>, bool),
 }
 
 pub struct Responder {
@@ -117,7 +117,24 @@ impl Responder {
                 });
             }
 
-            Respond::TailStream(_) => {}
+            Respond::Tail(filename, num_lines, is_stream) => {
+                let mut file = match std::fs::File::open(&filename) {
+                    Ok(file) => file,
+                    Err(err) => {
+                        let _ = stream
+                            .write(format!("Error opening file {filename}: {err}").as_bytes())
+                            .map_err(|_| eprint!("Can't respond to client"));
+                        return;
+                    }
+                };
+                let mut buffer = String::new();
+                if let Err(err) = file.read_to_string(&mut buffer) {
+                    let _ = stream
+                        .write(format!("Error reading file {filename}: {err}").as_bytes())
+                        .map_err(|_| eprint!("Can't respond to client"));
+                    return;
+                }
+            }
         }
     }
 

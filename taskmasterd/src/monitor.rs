@@ -1,9 +1,9 @@
-use crate::action::{Action, TailType};
+use crate::action::{Action, OutputType, TailType};
 use crate::configuration::State::{BACKOFF, EXITED, FATAL, RUNNING, STARTING, STOPPED, STOPPING};
 use crate::configuration::{AutoRestart, Configuration};
 use crate::logger::Logger;
 use crate::remove_and_exit;
-use crate::responder::Respond::{self, MaintailStream, Message};
+use crate::responder::Respond;
 use crate::task::Task;
 use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
@@ -378,20 +378,21 @@ impl Monitor {
     pub fn answer(&mut self, action: Action) -> Respond {
         match action {
             Action::Config(task_name) => match self.get_task_json_config_by_name(&task_name) {
-                None => Message(format!("Can't find \"{task_name}\" task")),
-                Some(task) => Message(format!("{task_name}: {task}")),
+                None => Respond::Message(format!("Can't find \"{task_name}\" task")),
+                Some(task) => Respond::Message(format!("{task_name}: {task}")),
             },
-            Action::Tail(_, _, _) => Message(String::new()),
             Action::Maintail(arg) => match arg {
-                TailType::Stream(num_lines) => MaintailStream(num_lines),
+                TailType::Stream(num_lines) => Respond::MaintailStream(num_lines),
                 TailType::Fixed(num_lines) => {
-                    Message(self.logger.lock().unwrap().get_history(num_lines).join(""))
+                    Respond::Message(self.logger.lock().unwrap().get_history(num_lines).join(""))
                 }
             },
             Action::Shutdown => remove_and_exit(0),
-            Action::Signal(signum, task_name) => Message(self.signal_task(signum, &task_name)),
+            Action::Signal(signum, task_name) => {
+                Respond::Message(self.signal_task(signum, &task_name))
+            }
             Action::Start(arg) => match arg {
-                Some((task_name, num)) => Message(self.start_task(&task_name, &num)),
+                Some((task_name, num)) => Respond::Message(self.start_task(&task_name, &num)),
                 None => {
                     let tasks = self
                         .tasks
@@ -400,7 +401,7 @@ impl Monitor {
                         .keys()
                         .cloned()
                         .collect::<Vec<String>>();
-                    Message(
+                    Respond::Message(
                         tasks
                             .iter()
                             .map(|task_name| self.start_task(&task_name, &None))
@@ -408,9 +409,9 @@ impl Monitor {
                     )
                 }
             },
-            Action::Status(status) => Message(self.get_task_status(status)),
+            Action::Status(status) => Respond::Message(self.get_task_status(status)),
             Action::Stop(arg) => match arg {
-                Some((task_name, num)) => Message(self.stop_task(&task_name, &num)),
+                Some((task_name, num)) => Respond::Message(self.stop_task(&task_name, &num)),
                 None => {
                     let tasks = self
                         .tasks
@@ -419,7 +420,7 @@ impl Monitor {
                         .keys()
                         .cloned()
                         .collect::<Vec<String>>();
-                    Message(
+                    Respond::Message(
                         tasks
                             .iter()
                             .map(|task_name| self.stop_task(&task_name, &None))
@@ -427,13 +428,33 @@ impl Monitor {
                     )
                 }
             },
+            Action::Tail(task_name, tail_type, output_type) => {
+                let tasks = self.tasks.lock().unwrap();
+                if let Some(task) = tasks.get(&task_name).unwrap_or(&Vec::new()).get(0) {
+                    let filename = match output_type {
+                        OutputType::Stdout => task.configuration.stdout.clone(),
+                        OutputType::Stderr => task.configuration.stderr.clone(),
+                    };
+
+                    if let Some(filename) = filename {
+                        match tail_type {
+                            TailType::Stream(num_lines) => Respond::Tail(filename, num_lines, true),
+                            TailType::Fixed(num_lines) => Respond::Tail(filename, num_lines, false),
+                        }
+                    } else {
+                        Respond::Message(format!("Can't find {output_type} for {task_name}"))
+                    }
+                } else {
+                    Respond::Message(format!("Can't find task {task_name}"))
+                }
+            }
             Action::Update(arg) => {
                 if let Some(config_path) = arg {
                     self.config_path = config_path;
                 }
                 match Configuration::from_yml(self.config_path.clone(), self.logger.clone()) {
-                    Ok(conf) => Message(self.update_configuration(conf)),
-                    Err(err_msg) => Message(format!("{err_msg}")),
+                    Ok(conf) => Respond::Message(self.update_configuration(conf)),
+                    Err(err_msg) => Respond::Message(format!("{err_msg}")),
                 }
             }
         }
