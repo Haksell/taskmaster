@@ -3,6 +3,8 @@ use crate::configuration::State::{BACKOFF, EXITED, FATAL, RUNNING, STARTING, STO
 use crate::configuration::{AutoRestart, Configuration};
 use crate::logger::Logger;
 use crate::remove_and_exit;
+use crate::responder::Respond;
+use crate::responder::Respond::{MaintailStream, Message};
 use crate::task::Task;
 use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
@@ -373,25 +375,34 @@ impl Monitor {
         });
     }
 
-    pub fn answer(&mut self, action: Action) -> String {
+    //TODO: make up a correct name
+    pub fn answer(&mut self, action: Action) -> Respond {
         match action {
             Action::Config(task_name) => match self.get_task_json_config_by_name(&task_name) {
-                None => format!("Can't find \"{task_name}\" task"),
-                Some(task) => format!("{task_name}: {task}"),
+                None => Message(format!("Can't find \"{task_name}\" task")),
+                Some(task) => Message(format!("{task_name}: {task}")),
             },
-            Action::Maintail(arg) => self
-                .logger
-                .lock()
-                .unwrap()
-                .get_history(match arg {
-                    Some(num_lines) => num_lines,
-                    None => 10,
-                })
-                .join(""),
+            Action::Tail(task_name, output_type) => Message(String::new()),
+            Action::Maintail(arg) => Message(
+                self.logger
+                    .lock()
+                    .unwrap()
+                    .get_history(match arg {
+                        Some(num_lines) => {
+                            if num_lines == 42 {
+                                //TODO: handle good arg value
+                                return MaintailStream;
+                            }
+                            num_lines
+                        }
+                        None => 10,
+                    })
+                    .join(""),
+            ),
             Action::Shutdown => remove_and_exit(0),
-            Action::Signal(signum, task_name) => self.signal_task(signum, &task_name),
+            Action::Signal(signum, task_name) => Message(self.signal_task(signum, &task_name)),
             Action::Start(arg) => match arg {
-                Some((task_name, num)) => self.start_task(&task_name, &num),
+                Some((task_name, num)) => Message(self.start_task(&task_name, &num)),
                 None => {
                     let tasks = self
                         .tasks
@@ -400,15 +411,17 @@ impl Monitor {
                         .keys()
                         .cloned()
                         .collect::<Vec<String>>();
-                    tasks
-                        .iter()
-                        .map(|task_name| self.start_task(&task_name, &None))
-                        .collect()
+                    Message(
+                        tasks
+                            .iter()
+                            .map(|task_name| self.start_task(&task_name, &None))
+                            .collect(),
+                    )
                 }
             },
-            Action::Status(status) => self.get_task_status(status),
+            Action::Status(status) => Message(self.get_task_status(status)),
             Action::Stop(arg) => match arg {
-                Some((task_name, num)) => self.stop_task(&task_name, &num),
+                Some((task_name, num)) => Message(self.stop_task(&task_name, &num)),
                 None => {
                     let tasks = self
                         .tasks
@@ -417,10 +430,12 @@ impl Monitor {
                         .keys()
                         .cloned()
                         .collect::<Vec<String>>();
-                    tasks
-                        .iter()
-                        .map(|task_name| self.stop_task(&task_name, &None))
-                        .collect()
+                    Message(
+                        tasks
+                            .iter()
+                            .map(|task_name| self.stop_task(&task_name, &None))
+                            .collect(),
+                    )
                 }
             },
             Action::Update(arg) => {
@@ -428,8 +443,8 @@ impl Monitor {
                     self.config_path = config_path;
                 }
                 match Configuration::from_yml(self.config_path.clone(), self.logger.clone()) {
-                    Ok(conf) => self.update_configuration(conf),
-                    Err(err_msg) => format!("{err_msg}"),
+                    Ok(conf) => Message(self.update_configuration(conf)),
+                    Err(err_msg) => Message(format!("{err_msg}")),
                 }
             }
         }

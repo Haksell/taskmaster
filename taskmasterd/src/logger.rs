@@ -11,7 +11,7 @@ const MAX_MESSAGES: usize = 1000;
 const BUFFER_SIZE: usize = MAX_MESSAGES * 6 / 5;
 
 pub struct Logger {
-    history: VecDeque<String>,
+    pub history: VecDeque<String>,
     file: File,
 }
 

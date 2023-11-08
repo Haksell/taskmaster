@@ -1,9 +1,20 @@
 use serde::{Deserialize, Serialize};
 
+pub enum TailType {
+    Stream(usize),
+    Fixed(usize),
+}
+
+#[derive(Eq, PartialEq, Serialize, Deserialize, Clone)]
+pub enum OutputType {
+    Stdout,
+    Stderr,
+}
 #[derive(Eq, PartialEq, Serialize, Deserialize, Clone)]
 pub enum Action {
     Config(String),
     Maintail(Option<usize>),
+    Tail(String, OutputType),
     Shutdown,
     Signal(u8, String),
     Start(Option<(String, Option<usize>)>),

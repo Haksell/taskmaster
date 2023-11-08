@@ -74,6 +74,7 @@ def send_to_socket(message):
                     return
                 if not part:
                     break
+                print(f"{part.decode().rstrip()}", flush=True) #need print in the loop and handle signal to quit
                 response_parts.append(part)
             response = b"".join(response_parts).decode().rstrip()
             if response:
