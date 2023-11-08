@@ -275,6 +275,10 @@ class TaskMasterShell(cmd.Cmd):
 
     do_quit = do_exit
 
+    def do_clear(self, arg):
+        """clear <name> : Clear the log files of a process"""
+        process_cmd(arg, Argument.ONE)
+
     def do_config(self, arg):
         """config <name> : Get the task configuration in json"""
         process_cmd(arg, Argument.ONE)

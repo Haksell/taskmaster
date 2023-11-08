@@ -378,9 +378,19 @@ impl Monitor {
         });
     }
 
+    fn clear_logs(&mut self, task_name: &str) -> String {
+        let tasks = self.tasks.lock().unwrap();
+        let mut logger = self.logger.lock().unwrap();
+        logger.monit_log(match tasks.get(task_name) {
+            None => format!("Failed to clear the logs of {task_name}: task does not exist"),
+            Some(task_group) => task_group[0].clear_logs(task_name),
+        })
+    }
+
     //TODO: make up a correct name
     pub fn answer(&mut self, action: Action) -> Respond {
         match action {
+            Action::Clear(task_name) => Respond::Message(self.clear_logs(&task_name)),
             Action::Config(task_name) => match self.get_task_json_config_by_name(&task_name) {
                 None => Respond::Message(format!("Can't find \"{task_name}\" task")),
                 Some(task) => Respond::Message(format!("{task_name}: {task}")),

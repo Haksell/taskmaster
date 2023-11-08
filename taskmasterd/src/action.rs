@@ -24,6 +24,7 @@ impl Display for OutputType {
 
 #[derive(Eq, PartialEq, Serialize, Deserialize, Clone)]
 pub enum Action {
+    Clear(String),
     Config(String),
     Maintail(TailType),
     Shutdown,
