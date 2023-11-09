@@ -447,8 +447,7 @@ impl Monitor {
         })
     }
 
-    //TODO: make up a correct name
-    pub fn answer(&mut self, action: Action) -> Respond {
+    pub fn handle_action(&mut self, action: Action) -> Respond {
         match action {
             Action::Clear(task_name) => Respond::Message(self.clear_logs(&task_name)),
             Action::Config(task_name) => match self.get_task_json_config_by_name(&task_name) {

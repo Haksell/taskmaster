@@ -173,8 +173,9 @@ impl Logger {
         self.do_log(GLOBAL_PREFIX, message.as_ref());
     }
 
-    pub fn resp_log<S: AsRef<str>>(&mut self, message: S) {
+    pub fn resp_log(&mut self, message: String) -> String {
         self.do_log(RESPONDER_PREFIX, message.as_ref());
+        message
     }
 
     pub fn http_log(&mut self, message: String) -> String {

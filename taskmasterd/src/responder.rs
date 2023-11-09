@@ -5,10 +5,10 @@ use crate::responder::Respond::Message;
 use crate::{remove_and_exit, UNIX_DOMAIN_SOCKET_PATH};
 use std::borrow::Cow;
 use std::collections::VecDeque;
-use std::io::{stdout, Read, Seek, Write};
+use std::io::{Read, Seek, Write};
 use std::os::unix::fs::PermissionsExt;
 use std::os::unix::net::{UnixListener, UnixStream};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Duration;
 use std::{fs, thread};
 
@@ -48,22 +48,37 @@ impl Responder {
         };
     }
 
-    //TODO: fn write()
+    fn write_message(
+        mut stream: &UnixStream,
+        message: String,
+        logger: &mut MutexGuard<Logger>,
+    ) -> bool {
+        if let Err(e) = stream.write(message.as_bytes()) {
+            logger.resp_log(format!(
+                "Can't answer to the client with message: \"{message}\": {e}"
+            ));
+            return false;
+        }
+        logger.resp_log(format!("Sending the answer: \"{message}\""));
+        if let Err(e) = stream.flush() {
+            logger.resp_log(format!("Can't flush the stdout: {e}"));
+            return false;
+        }
+        true
+    }
+
+    fn get_file_len(filename: &str) -> Result<u64, String> {
+        match fs::metadata(&filename) {
+            Ok(metadata) => Ok(metadata.len()),
+            Err(err) => Err(err.to_string()),
+        }
+    }
 
     fn handle_response(&mut self, mut stream: UnixStream, respond: Respond) {
-        let mut logger = self.logger.lock().unwrap();
         match respond {
             Message(message) => {
-                if let Err(e) = stream.write(message.as_bytes()) {
-                    logger.resp_log(format!(
-                        "Can't answer to the client with message: \"{message}\": {e}"
-                    ));
-                } else {
-                    logger.resp_log(format!("Sending the answer: \"{message}\""));
-                }
-                if let Err(e) = stream.flush() {
-                    logger.resp_log(format!("Can't flush the stdout: {e}"));
-                }
+                let mut logger = self.logger.lock().unwrap();
+                Responder::write_message(&stream, message, &mut logger);
             }
             Respond::MaintailStream(num_lines) => {
                 let logger_clone = self.logger.clone();
@@ -86,19 +101,15 @@ impl Responder {
                     let mut last_logged_idx = 0usize;
 
                     'outer: loop {
-                        let logger = logger_clone.lock().unwrap();
+                        let mut logger = logger_clone.lock().unwrap();
 
                         while !history_buffer.is_empty() {
                             if let Some((idx, message)) = history_buffer.pop_front() {
                                 last_logged_idx = idx;
-                                if let Err(err) = stream.write(message.as_bytes()) {
-                                    eprintln!("Exiting maintail -f: {:?}", err);
+                                if !Responder::write_message(&stream, message, &mut logger) {
+                                    eprintln!("Exiting maintail -f: can't write or flush");
                                     break 'outer;
                                 }
-                            }
-                            if let Err(err) = stream.flush() {
-                                eprintln!("Exiting maintail -f: {:?}", err);
-                                break 'outer;
                             }
                         }
 
@@ -118,77 +129,115 @@ impl Responder {
                     }
                 });
             }
-            Respond::Tail(filename, num_lines, is_stream) => {
-                match fs::File::open(&filename) {
-                    Ok(mut file) => {
-                        let mut buffer = String::new();
-                        match file.read_to_string(&mut buffer) {
-                            Ok(_) => {
-                                print!("{buffer}");
-                                stdout().flush().unwrap(); //FIXME: handle
-                                match num_lines {
-                                    None => {
-                                        stream.write(buffer.as_bytes()).unwrap();
-                                    } //FIXME: handle,
-                                    Some(num) => {
-                                        let mut lines: Vec<String> = buffer
-                                            .lines()
-                                            .rev()
-                                            .take(num)
-                                            .map(String::from)
-                                            .collect();
-                                        lines = lines.iter().cloned().rev().collect();
-                                        stream
-                                            .write(
-                                                lines
-                                                    .iter()
-                                                    .map(|line| line.to_string() + "\n")
-                                                    .collect::<String>()
-                                                    .as_bytes(),
-                                            )
-                                            .unwrap(); //TODO: handle
-                                        stream.flush().unwrap(); //TODO: handle
-                                    }
+            Respond::Tail(filename, num_lines, is_stream) => match fs::File::open(&filename) {
+                Ok(mut file) => {
+                    let mut buffer = String::new();
+                    match file.read_to_string(&mut buffer) {
+                        Ok(_) => {
+                            let logger_clone = self.logger.clone();
+                            let mut logger = self.logger.lock().unwrap();
+                            match num_lines {
+                                None => {
+                                    Responder::write_message(&stream, buffer, &mut logger);
                                 }
-                                if is_stream {
-                                    let mut last_size = fs::metadata(&filename).unwrap().len(); //TODO: handle
-                                    thread::spawn(move || loop {
-                                        thread::sleep(Duration::from_millis(100));
-                                        let new_size = fs::metadata(&filename).unwrap().len(); //TODO: handle
-                                        if new_size < last_size {
-                                            if let Err(e) = stream.write(
-                                                format!("\n\ntail: {filename}: file truncated\n")
-                                                    .as_bytes(),
-                                            ) {
-                                                eprintln!("{e}");
-                                                break;
-                                            }
-                                            stream.flush().unwrap(); //TODO: handle
-                                            file.seek(std::io::SeekFrom::Start(0)).unwrap();
-                                        } else if new_size == last_size {
-                                            continue;
-                                        }
-                                        let mut new_content = String::new();
-                                        file.read_to_string(&mut new_content).unwrap(); //TODO: handle
-                                        if let Err(e) = stream.write(new_content.as_bytes()) {
-                                            eprintln!("{e}");
-                                            break;
-                                        }
-                                        stream.flush().unwrap();
-                                        last_size = new_size;
-                                    });
+                                Some(num) => {
+                                    let mut lines: Vec<String> =
+                                        buffer.lines().rev().take(num).map(String::from).collect();
+                                    lines = lines.iter().cloned().rev().collect();
+                                    let mut output = lines.join("\n");
+                                    if !buffer.ends_with("\n") {
+                                        output += "\n";
+                                    }
+                                    Responder::write_message(&stream, output, &mut logger);
                                 }
                             }
-                            Err(_) => {
-                                eprintln!("Can't read file")
+                            if is_stream {
+                                let mut last_size;
+                                match Responder::get_file_len(&filename) {
+                                    Ok(size) => {
+                                        last_size = size;
+                                    }
+                                    Err(err) => {
+                                        Responder::write_message(
+                                            &stream,
+                                            format!("Can't access len of {filename}: {err}"),
+                                            &mut logger,
+                                        );
+                                        return;
+                                    }
+                                };
+                                thread::spawn(move || loop {
+                                    thread::sleep(Duration::from_millis(100));
+                                    let mut logger = logger_clone.lock().unwrap();
+                                    let new_size;
+                                    match Responder::get_file_len(&filename) {
+                                        Ok(size) => {
+                                            new_size = size;
+                                        }
+                                        Err(err) => {
+                                            Responder::write_message(
+                                                &stream,
+                                                format!("Can't access len of {filename}: {err}"),
+                                                &mut logger,
+                                            );
+                                            return;
+                                        }
+                                    };
+                                    if new_size < last_size {
+                                        if !Responder::write_message(
+                                            &stream,
+                                            format!("\n\ntail: {filename}: file truncated\n\n"),
+                                            &mut logger,
+                                        ) {
+                                            return;
+                                        }
+                                        if let Err(err) = file.seek(std::io::SeekFrom::Start(0)) {
+                                            Responder::write_message(
+                                                &stream,
+                                                format!(
+                                                    "\nFailed to rewind file {filename}: {err}"
+                                                ),
+                                                &mut logger,
+                                            );
+                                            return;
+                                        }
+                                    } else if new_size == last_size {
+                                        continue;
+                                    }
+                                    let mut new_content = String::new();
+                                    if let Err(err) = file.read_to_string(&mut new_content) {
+                                        Responder::write_message(
+                                            &stream,
+                                            format!("\nFailed to read file {filename}: {err}"),
+                                            &mut logger,
+                                        );
+                                        return;
+                                    }
+                                    if !Responder::write_message(&stream, new_content, &mut logger)
+                                    {
+                                        return;
+                                    }
+                                    last_size = new_size;
+                                });
                             }
                         }
-                    }
-                    Err(_) => {
-                        eprintln!("Can't open file")
+                        Err(err) => {
+                            Responder::write_message(
+                                &stream,
+                                format!("\nFailed to read file {filename}: {err}"),
+                                &mut self.logger.lock().unwrap(),
+                            );
+                        }
                     }
                 }
-            }
+                Err(err) => {
+                    Responder::write_message(
+                        &stream,
+                        format!("\nFailed to open file {filename}: {err}"),
+                        &mut self.logger.lock().unwrap(),
+                    );
+                }
+            },
         }
     }
 
@@ -199,7 +248,7 @@ impl Responder {
         }
         match serde_json::from_str::<Action>(received_data.to_string().as_str()) {
             Ok(action) => {
-                let answer = self.monitor.answer(action);
+                let answer = self.monitor.handle_action(action);
                 self.handle_response(stream, answer);
             }
             Err(error) => {
