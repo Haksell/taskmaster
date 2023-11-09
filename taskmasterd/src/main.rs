@@ -46,7 +46,7 @@ fn check_root_user() {
     let euid = unsafe { libc::geteuid() };
     if euid != 0 {
         eprintln!("Error: taskmasterd must be run as the root user in non-debug mode.");
-        std::process::exit(1);
+        remove_and_exit(1);
     }
 }
 
