@@ -109,8 +109,12 @@ impl Responder {
                         let history = logger.history.clone();
                         let to_append: Vec<_> = history
                             .iter()
-                            .skip_while(|(idx, _)| *idx != last_logged_idx)
-                            .skip(1)
+                            .skip(
+                                match history.iter().position(|(idx, _)| *idx == last_logged_idx) {
+                                    Some(pos) => pos + 1,
+                                    None => 0,
+                                },
+                            )
                             .cloned()
                             .collect();
                         for element in to_append.iter() {
@@ -118,7 +122,7 @@ impl Responder {
                         }
 
                         drop(logger);
-                        thread::sleep(Duration::from_millis(100));
+                        thread::sleep(Duration::from_millis(50));
                     }
                 });
             }
@@ -148,7 +152,7 @@ impl Responder {
                             if is_stream {
                                 let mut last_size = buffer.len() as u64;
                                 thread::spawn(move || loop {
-                                    thread::sleep(Duration::from_millis(100));
+                                    thread::sleep(Duration::from_millis(50));
                                     let mut logger = logger_clone.lock().unwrap();
                                     let new_size = match fs::metadata(&filename) {
                                         Ok(metadata) => metadata.len(),

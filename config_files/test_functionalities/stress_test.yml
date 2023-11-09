@@ -1,0 +1,9 @@
+loopydate:
+  cmd: "date"
+  num_procs: 1024
+  auto_start: false
+  auto_restart: true
+  start_retries: 10
+  start_time: 2
+  stdout: /tmp/taskmaster/loopydate.stdout
+  stderr: /tmp/taskmaster/loopydate.stderr

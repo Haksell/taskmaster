@@ -9,7 +9,7 @@ const MONITOR_PREFIX: &'static str = "    MONITOR   ";
 const RESPONDER_PREFIX: &'static str = "   RESPONDER  ";
 const GLOBAL_PREFIX: &'static str = "  RUSTMASTER  ";
 const HTTP_LOGGER_PREFIX: &'static str = " HTTP_LOGGER  ";
-const MAX_MESSAGES: usize = 1000;
+const MAX_MESSAGES: usize = 10000;
 const BUFFER_SIZE: usize = MAX_MESSAGES * 6 / 5;
 
 pub type LogLine = (usize, String);

@@ -162,6 +162,7 @@ impl Monitor {
                                     "{name}[{i}]: Error during the restart: {e_msg}\n"
                                 ));
                             } else {
+                                process.restarts_left = process.configuration.start_retries;
                                 process.is_manual_restarting = true;
                                 result += &logger.monit_log(format!("{name}[{i}]: Restarting...\n"))
                             }
@@ -256,6 +257,7 @@ impl Monitor {
                     logger.monit_log(format!("All task in {name} will be started"));
                     for (i, process) in task_group.iter_mut().enumerate() {
                         if process.can_be_launched() {
+                            process.restarts_left = process.configuration.start_retries;
                             if let Err(e_msg) = process.run() {
                                 result += &logger.monit_log(format!(
                                     "{name}[{i}]: Error during the start: {e_msg}\n"
@@ -508,7 +510,7 @@ impl Monitor {
             }
             drop(logger);
             drop(tasks);
-            thread::sleep(Duration::from_millis(100));
+            thread::sleep(Duration::from_millis(50));
         });
     }
 

@@ -142,6 +142,11 @@ pub struct Configuration {
     pub auto_start: bool,
     pub auto_restart: AutoRestart,
     pub exit_codes: Vec<i32>,
+    #[validate(range(
+        min = 0,
+        max = 1024,
+        message = "start_retries value should be between 0 and 1024"
+    ))]
     pub start_retries: u32,
     pub start_time: u64,
     pub stop_signal: StopSignal,
