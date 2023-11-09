@@ -26,7 +26,7 @@ pub struct Responder {
 impl Responder {
     fn bind_listener(&self) -> UnixListener {
         let mut logger = self.logger.lock().unwrap();
-        return match UnixListener::bind(UNIX_DOMAIN_SOCKET_PATH) {
+        match UnixListener::bind(UNIX_DOMAIN_SOCKET_PATH) {
             Ok(stream) => {
                 if let Err(_) =
                     fs::set_permissions(UNIX_DOMAIN_SOCKET_PATH, fs::Permissions::from_mode(0o666))
@@ -45,7 +45,7 @@ impl Responder {
                 logger.log_err(format!("Can't bind socket \"{UNIX_DOMAIN_SOCKET_PATH}\""));
                 remove_and_exit(2);
             }
-        };
+        }
     }
 
     fn write_message(
