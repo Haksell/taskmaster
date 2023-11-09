@@ -48,9 +48,9 @@ impl Task {
 
     unsafe fn setup_child_process(&mut self, stderr: Stdio, stdout: Stdio) -> Result<(), String> {
         let umask_val = self.configuration.umask as mode_t;
-        match Command::new("sh")
-            .arg("-c")
-            .arg(&self.configuration.cmd)
+        let args: Vec<_> = self.configuration.cmd.split_whitespace().collect();
+        match Command::new(args[0])
+            .args(&args[1..])
             .current_dir(match &self.configuration.working_dir {
                 Some(cwd) => &cwd,
                 None => ".",
@@ -138,10 +138,14 @@ impl Task {
                 "Failed to send signal {signum} to {task_name}[{idx}] because it is not running\n"
             ),
             Some(child) => {
+                println!("{}", child.id() as pid_t);
                 unsafe {
-                    libc::kill(child.id() as pid_t, signum as i32);
+                    if libc::kill(child.id() as pid_t, signum as i32) == -1 {
+                        format!("{task_name}[{idx}] did not receive signal {signum}\n")
+                    } else {
+                        format!("{task_name}[{idx}] received signal {signum}\n")
+                    }
                 }
-                format!("{task_name}[{idx}] received signal {signum}\n")
             }
         }
     }

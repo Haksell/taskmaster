@@ -1,0 +1,10 @@
+show_signal:
+  cmd: "./scripts/show_signal.py"
+  num_procs: 1
+  umask: 777
+  auto_start: true
+  auto_restart: false
+  stop_signal: HUP
+  stop_time: 5
+  stdout: /tmp/taskmaster/show_signal.stdout
+  stderr: /tmp/taskmaster/show_signal.stderr
