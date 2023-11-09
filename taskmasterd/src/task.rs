@@ -98,8 +98,6 @@ impl Task {
         Ok(())
     }
 
-    // TODO: refactor kill, stop & signal
-
     pub fn kill(&mut self) -> Result<(), String> {
         return match &mut self.child {
             None => Err(format!(

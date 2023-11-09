@@ -324,7 +324,6 @@ impl Monitor {
                 } else {
                     process.restarts_left -= 1;
                     logger.sth_log(format!("{task_name}: Restarting, exited too quickly"));
-                    //TODO: real supervisor doesn't change status to starting if it's backoff
                     let _ = process.run();
                 }
             }
@@ -374,67 +373,60 @@ impl Monitor {
         let monitor_clone = self.tasks.clone();
         let logger_clone = self.logger.clone();
 
-        thread::spawn(move || {
-            loop {
-                let mut tasks = monitor_clone.lock().unwrap();
-                let mut logger = logger_clone.lock().unwrap();
-                for (name, task) in tasks.iter_mut() {
-                    for (i, process) in task.iter_mut().enumerate() {
-                        if let STARTING(started_at) = process.state {
-                            if process.is_passed_starting_period(started_at) {
-                                logger.sth_log(format!("{name}[{i}]: is running now"));
-                                process.state = RUNNING(started_at);
+        thread::spawn(move || loop {
+            let mut tasks = monitor_clone.lock().unwrap();
+            let mut logger = logger_clone.lock().unwrap();
+            for (name, task) in tasks.iter_mut() {
+                for (i, process) in task.iter_mut().enumerate() {
+                    if let STARTING(started_at) = process.state {
+                        if process.is_passed_starting_period(started_at) {
+                            logger.sth_log(format!("{name}[{i}]: is running now"));
+                            process.state = RUNNING(started_at);
+                        }
+                    }
+                    if let STOPPING(stopped_at) = process.state {
+                        if process.is_passed_stopping_period(stopped_at) {
+                            logger.sth_log(format!("{name}[{i}]: Should be killed"));
+                            if let Err(err) = process.kill() {
+                                logger.sth_log(format!("{name}[{i}]: {err}"));
                             }
                         }
-                        if let STOPPING(stopped_at) = process.state {
-                            if process.is_passed_stopping_period(stopped_at) {
-                                logger.sth_log(format!("{name}[{i}]: Should be killed"));
-                                //TODO: handle
-                                let _ = process.kill();
-                            }
+                    }
+                    if let STOPPED(_) = process.state {
+                        if process.is_manual_restarting {
+                            process.is_manual_restarting = false;
+                            logger
+                                .sth_log(format!("{name}[{i}]: Starting after manual restarting"));
+                            let _ = process.run();
                         }
-                        if let STOPPED(_) = process.state {
-                            if process.is_manual_restarting {
-                                process.is_manual_restarting = false;
-                                logger.sth_log(format!(
-                                    "{name}[{i}]: Starting after manual restarting"
-                                ));
-                                //TODO: handle
-                                let _ = process.run();
+                    }
+                    match &mut process.child {
+                        Some(child) => match child.try_wait() {
+                            Ok(Some(status)) => {
+                                Monitor::manage_finished_state(
+                                    process,
+                                    format!("{name}[{i}]"),
+                                    status.code(),
+                                    &mut logger,
+                                );
                             }
-                        }
-                        match &mut process.child {
-                            Some(child) => match child.try_wait() {
-                                Ok(Some(status)) => {
-                                    Monitor::manage_finished_state(
-                                        process,
-                                        format!("{name}[{i}]"),
-                                        status.code(),
-                                        &mut logger,
-                                    );
-                                }
-                                Ok(None) => {}
-                                Err(e) => {
-                                    logger.log_err(format!("Error attempting to wait: {:?}", e))
-                                }
-                            },
-                            None => {
-                                if process.configuration.auto_start
-                                    && process.state == STOPPED(None)
-                                {
-                                    logger.sth_log(format!("Auto starting {name}[{i}]"));
-                                    if let Err(error_msg) = process.run() {
-                                        logger.sth_log(format!("{name}[{i}]: {error_msg}"));
-                                    }
+                            Ok(None) => {}
+                            Err(e) => logger.log_err(format!("Error attempting to wait: {:?}", e)),
+                        },
+                        None => {
+                            if process.configuration.auto_start && process.state == STOPPED(None) {
+                                logger.sth_log(format!("Auto starting {name}[{i}]"));
+                                if let Err(error_msg) = process.run() {
+                                    logger.sth_log(format!("{name}[{i}]: {error_msg}"));
                                 }
                             }
                         }
                     }
                 }
-                drop(logger);
-                drop(tasks);
-                thread::sleep(Duration::from_millis(100));
             }
+            drop(logger);
+            drop(tasks);
+            thread::sleep(Duration::from_millis(100));
         });
     }
 
