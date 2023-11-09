@@ -1,4 +1,5 @@
 taskmasterd/target
+taskmasterctl/__pycache__
 .vagrant
 *.sock
 .idea

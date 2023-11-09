@@ -47,5 +47,6 @@ clean: stop
 	@rm -rf $(GARBAGE)
 	@rm -rf $(SOCK_FILE)
 	@rm -rf $(LOG_FILE)
+	@rm -rf $(taskmasterctl/__pycache__)
 	$(call rm,target)
 	@rm -rf /tmp/taskmaster/*

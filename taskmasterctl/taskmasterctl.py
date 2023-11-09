@@ -1,12 +1,17 @@
 import cmd
-from enum import Enum, auto
 import glob
 import inspect
 import json
 import os
 import socket
 import readline
-import signal
+
+from argument import (
+    Argument,
+    CHECK_ARGC,
+    FORMAT_ARGUMENTS,
+    get_argument_string,
+)
 
 BUFFER_SIZE = 1024
 INTRO_CHAR = "="
@@ -19,40 +24,6 @@ CYAN = "\033[96m"
 
 PROMPT_START_IGNORE = "\001"
 PROMPT_END_IGNORE = "\002"
-
-
-class Argument(Enum):
-    HTTP = auto()
-    MAINTAIL = auto()
-    ONE = auto()
-    OPTIONAL_POSITIVE = auto()
-    OPTIONAL_STRING = auto()
-    SIGNAL = auto()
-    TAIL = auto()
-    ZERO = auto()
-    ZERO_TO_TWO = auto()
-
-
-CHECK_ARGC = {
-    Argument.HTTP: lambda argc: 1 <= argc <= 2,
-    Argument.MAINTAIL: lambda argc: argc <= 1,
-    Argument.ONE: lambda argc: argc == 1,
-    Argument.OPTIONAL_POSITIVE: lambda argc: argc <= 1,
-    Argument.OPTIONAL_STRING: lambda argc: argc <= 1,
-    Argument.SIGNAL: lambda argc: 2 <= argc <= 3,
-    Argument.TAIL: lambda argc: 2 <= argc <= 3,
-    Argument.ZERO_TO_TWO: lambda argc: argc <= 2,
-    Argument.ZERO: lambda argc: argc == 0,
-}
-
-ARGUMENT_STRING = {
-    Argument.ONE: "requires exactly one argument",
-    Argument.OPTIONAL_POSITIVE: "accepts zero or one unsigned integer argument",
-    Argument.OPTIONAL_STRING: "accepts zero or one argument",
-    Argument.SIGNAL: "requires a signal number or name, followed by a task name and an optional index",
-    Argument.ZERO: "doesn't accept an argument",
-    Argument.ZERO_TO_TWO: "requires zero, one or two arguments",
-}
 
 
 def communicate(message):
@@ -96,160 +67,19 @@ def communicate(message):
         print(f"Unknown error: {e}")
 
 
-def parse_index(s):
-    try:
-        idx = int(s)
-        assert idx >= 0
-        return idx
-    except (AssertionError, ValueError):
-        print(f'Invalid index: "{s}"')
-        return None
-
-
-def handle_zero_to_two_arguments(command, argc, argv):
-    if argc == 0:
-        return {command: None}
-    elif argc == 1:
-        return {command: [argv[0], None]}
-    else:
-        idx = parse_index(argv[1])
-        return None if idx is None else {command: [argv[0], idx]}
-
-
-def handle_optional_positive(command, argc, argv):
-    if argc == 0:
-        return {command: None}
-    else:
-        try:
-            val = int(argv[0])
-            assert val > 0
-        except (AssertionError, ValueError):
-            print(f'"{argv[0]}" is not a positive number')
-            return None
-        return {command: val}
-
-
-def handle_signal_arguments(command, argc, argv):
-    def get_signum(sigstr):
-        try:
-            n = int(sigstr)
-            if 0 <= n <= 255:
-                return n
-        except ValueError:
-            sigstr = sigstr.upper()
-            if not sigstr.startswith("SIG"):
-                sigstr = "SIG" + sigstr
-            try:
-                return getattr(signal, sigstr).value
-            except AttributeError:
-                pass
-
-    signum = get_signum(argv[0])
-    if signum is None:
-        print(f'"{argv[0]}" is not a valid signal')
-        return None
-
-    if argc == 2:
-        return {command: [signum, argv[1], None]}
-    else:
-        idx = parse_index(argv[2])
-        if idx is None:
-            return None
-        return {command: [signum, argv[1], idx]}
-
-
-def handle_http_arguments(command, argc, argv):
-    command = "HttpLogging"
-    if argc == 1:
-        if argv[0] != "disable":
-            print(TaskMasterShell.do_http.__doc__)
-            return None
-        else:
-            return {command: None}
-    else:
-        if argv[0] != "enable":
-            print(TaskMasterShell.do_http.__doc__)
-            return None
-        else:
-            try:
-                port = int(argv[1])
-                assert 0 <= port <= 65535
-                return {command: port}
-            except (AssertionError, ValueError):
-                print(f'"{argv[1]}" is not a valid port')
-                return None
-
-
-def get_tail_type(arg):
-    if arg.startswith("f"):
-        type_string = "Stream"
-        arg = arg[1:]
-    else:
-        type_string = "Fixed"
-    if arg == "":
-        return {type_string: None}
-    if all(c == "0" for c in arg):
-        print(f"Can't request 0 line from taskmasterd")
-        return None
-    try:
-        num_lines = int(arg)
-        return {type_string: num_lines}
-    except ValueError:
-        print(f'"{arg}" is not a valid number of lines')
-        return None
-
-
-def handle_maintail_argument(command, arg):
-    tail_type = get_tail_type(arg)
-    if tail_type is None:
-        return None
-    else:
-        return {command: tail_type}
-
-
-def handle_tail_argument(command, argc, argv):
-    task_name = argv[0]
-    output_type = argv[1].title()
-    if output_type != "Stdout" and output_type != "Stderr":
-        print(f'Invalid output type: "{argv[1]}"')
-        return None
-    tail_type = get_tail_type("" if argc == 2 else argv[2])
-    if tail_type is None:
-        return None
-    return {command: [task_name, output_type, tail_type]}
-
-
 def process_cmd(arg, expected_argument):
     current_frame = inspect.currentframe()
     calling_frame = current_frame.f_back
     method_name = calling_frame.f_code.co_name
+    command = method_name[3:]
     argv = arg.split()
     argc = len(argv)
     if CHECK_ARGC[expected_argument](argc):
-        command = method_name[3:].title()
-        message = (
-            command
-            if expected_argument == Argument.ZERO
-            else handle_zero_to_two_arguments(command, argc, argv)
-            if expected_argument == Argument.ZERO_TO_TWO
-            else handle_optional_positive(command, argc, argv)
-            if expected_argument == Argument.OPTIONAL_POSITIVE
-            else handle_signal_arguments(command, argc, argv)
-            if expected_argument == Argument.SIGNAL
-            else handle_maintail_argument(command, argv[0] if argv else "")
-            if expected_argument == Argument.MAINTAIL
-            else handle_tail_argument(command, argc, argv)
-            if expected_argument == Argument.TAIL
-            else handle_http_arguments(command, argc, argv)
-            if expected_argument == Argument.HTTP
-            else {command: arg or None}
-        )
-        if message is None:
-            return
-        communicate(json.dumps(message))
+        message = FORMAT_ARGUMENTS[expected_argument](command.title(), argc, argv)
+        if message is not None:
+            communicate(json.dumps(message))
     else:
-        argument_string = ARGUMENT_STRING.get(expected_argument, "usage:")
-        print(f"{method_name[3:]} {argument_string}")
+        print(f"{command} {get_argument_string(expected_argument)}")
         class_name = calling_frame.f_locals["self"].__class__.__name__
         method = getattr(eval(class_name, calling_frame.f_globals), method_name, None)
         print(method.__doc__)
@@ -357,7 +187,6 @@ if __name__ == "__main__":
     width = os.get_terminal_size().columns
     top_line = INTRO_CHAR * width
     middle_line = "  WELCOME TO TASKMASTER  ".center(width, INTRO_CHAR)
-    TaskMasterShell().cmdloop(
-        f"{BOLD}{GREEN}{top_line}\n{middle_line}\n{top_line}{RESET}"
-    )
+    intro = f"{BOLD}{GREEN}{top_line}\n{middle_line}\n{top_line}{RESET}"
+    TaskMasterShell().cmdloop(intro)
     print("Goodbye.")
