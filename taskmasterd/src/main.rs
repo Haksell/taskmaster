@@ -42,6 +42,14 @@ pub fn remove_and_exit(exit_code: i32) -> ! {
     std::process::exit(exit_code);
 }
 
+fn check_root_user() {
+    let euid = unsafe { libc::geteuid() };
+    if euid != 0 {
+        eprintln!("Error: taskmasterd must be run as the root user in non-debug mode.");
+        std::process::exit(1);
+    }
+}
+
 fn parse_arguments() -> (bool, String) {
     let mut should_daemonize = true;
     let mut filename: Option<String> = None;
@@ -99,6 +107,7 @@ fn main() {
             }
 
             if should_daemonize {
+                check_root_user();
                 match Daemonize::new()
                     .pid_file(PID_FILE_PATH)
                     .chown_pid_file(true)
