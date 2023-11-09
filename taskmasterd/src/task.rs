@@ -1,7 +1,7 @@
 extern crate libc;
 
 use crate::action::OutputType;
-use crate::configuration::{self, State::*};
+use crate::configuration::State::*;
 use crate::configuration::{Configuration, State};
 use libc::{mode_t, pid_t};
 use std::fmt::{Display, Formatter};
