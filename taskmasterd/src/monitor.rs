@@ -194,20 +194,21 @@ impl Monitor {
                 None => {
                     logger.monit_log(format!("All task in {name} will be stopped"));
                     for (i, process) in task_group.iter_mut().enumerate() {
-                        if let RUNNING(_) = process.state {
-                            if let Err(e_msg) = process.stop() {
-                                result += &logger.monit_log(format!(
-                                    "{name}[{i}]: Error during the stop: {e_msg}\n"
-                                ));
-                            } else {
-                                result += &logger.monit_log(format!("{name}[{i}]: Stopping...\n"))
+                        result += &logger.monit_log(match process.state {
+                            RUNNING(_) | STARTING(_) => {
+                                if let Err(e_msg) = process.stop() {
+                                    format!("{name}[{i}]: Error during the stop: {e_msg}\n")
+                                } else {
+                                    format!("{name}[{i}]: Stopping...\n")
+                                }
                             }
-                        } else {
-                            result += &logger.monit_log(format!(
-                                "{name}[{i}]: Can't be stopped. Current status {}\n",
-                                process.state
-                            ))
-                        }
+                            _ => {
+                                format!(
+                                    "{name}[{i}]: Can't be stopped. Current status {}\n",
+                                    process.state
+                                )
+                            }
+                        });
                     }
                 }
                 Some(index) => match task_group.get_mut(*index) {

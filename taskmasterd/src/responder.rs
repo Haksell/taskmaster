@@ -134,11 +134,12 @@ impl Responder {
                                     Responder::write_message(&stream, &buffer, &mut logger);
                                 }
                                 Some(num) => {
+                                    let ends_with_newline = buffer.ends_with("\n");
                                     let mut lines: Vec<String> =
                                         buffer.lines().rev().take(num).map(String::from).collect();
                                     lines = lines.iter().cloned().rev().collect();
                                     let mut output = lines.join("\n");
-                                    if !buffer.ends_with("\n") {
+                                    if ends_with_newline {
                                         output += "\n";
                                     }
                                     Responder::write_message(&stream, &output, &mut logger);

@@ -1,0 +1,12 @@
+unexpected:
+  cmd: "echo $(date)"
+  num_procs: 1
+  auto_start: true
+  auto_restart: unexpected
+  exit_codes:
+    - 42
+  start_time: 0
+  stop_signal: USR1
+  stop_time: 1
+  stdout: /tmp/taskmaster/unexpected.stdout
+  stderr: /tmp/taskmaster/unexpected.stderr
