@@ -5,4 +5,4 @@ pwd:
   auto_restart: false
   start_time: 0
   stdout: /tmp/taskmaster/pwd.stdout
-  working_dir: "   /tmp   "
+  working_dir: "   /run   "

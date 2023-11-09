@@ -68,7 +68,8 @@ fn parse_arguments() -> (bool, String) {
                 } else {
                     match filename {
                         None => filename = Some(arg.clone()),
-                        Some(old) =>  error_exit!(2,
+                        Some(old) =>  error_exit!(
+                            2,
                             "Error: Configuration file is already defined: \"{old}\". What is \"{arg}\"?",
                         )
                     }

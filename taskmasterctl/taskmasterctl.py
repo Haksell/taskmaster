@@ -170,7 +170,7 @@ class TaskMasterShell(cmd.Cmd):
         process_cmd(arg, Argument.OPTIONAL_STRING)
 
     def do_tail(self, arg):
-        """tail <stdout or stderr> <taskname>     : complete taskmasterd main log file\ntail <stdout or stderr> <taskname> N   : last N lines of taskmasterd main log file\ntail <stdout or stderr> <taskname> f   : complete and continuous taskmasterd main log file\ntail <stdout or stderr> <taskname> f42 : last N lines of taskmasterd main log file, continuously"""
+        """tail <taskname> <stdout or stderr>     : complete taskmasterd main log file\ntail <taskname> <stdout or stderr> N   : last N lines of taskmasterd main log file\ntail <taskname> <stdout or stderr> f   : complete and continuous taskmasterd main log file\ntail <taskname> <stdout or stderr> f42 : last N lines of taskmasterd main log file, continuously"""
         process_cmd(arg, Argument.TAIL)
 
     def do_update(self, arg):
