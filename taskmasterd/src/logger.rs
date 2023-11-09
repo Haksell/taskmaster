@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::net::TcpStream;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 const MONITOR_THREAD_PREFIX: &'static str = "MONITOR THREAD";
 const MONITOR_PREFIX: &'static str = "    MONITOR   ";
@@ -24,7 +24,9 @@ pub struct Logger {
 impl Logger {
     fn get_timestamp() -> String {
         let now = SystemTime::now();
-        let since_the_epoch = now.duration_since(UNIX_EPOCH).unwrap();
+        let since_the_epoch = now
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or(Duration::from_secs(0));
         let now_in_sec = since_the_epoch.as_secs();
         let hours = (now_in_sec % (24 * 3600)) / 3600;
         let minutes = (now_in_sec % 3600) / 60;

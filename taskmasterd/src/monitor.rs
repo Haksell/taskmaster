@@ -324,13 +324,17 @@ impl Monitor {
                 } else {
                     process.restarts_left -= 1;
                     logger.sth_log(format!("{task_name}: Restarting, exited too quickly"));
-                    let _ = process.run();
+                    if let Err(err) = process.run() {
+                        logger.sth_log(format!("{task_name}: {err}"));
+                    }
                 }
             }
             RUNNING(_) => {
                 match process.configuration.auto_restart {
                     AutoRestart::True => {
-                        let _ = process.run();
+                        if let Err(err) = process.run() {
+                            logger.sth_log(format!("{task_name}: {err}"));
+                        }
                         logger.sth_log(format!("{task_name}: Relaunching..."));
                     }
                     AutoRestart::False => {
@@ -342,7 +346,9 @@ impl Monitor {
                             logger.sth_log(format!(
                                 "{task_name}: unable to access exit status. Relaunching..."
                             ));
-                            let _ = process.run();
+                            if let Err(err) = process.run() {
+                                logger.sth_log(format!("{task_name}: {err}"));
+                            }
                         }
                         Some(code) => {
                             if process.configuration.exit_codes.contains(&code) {
@@ -350,7 +356,9 @@ impl Monitor {
                                 process.state = EXITED(SystemTime::now());
                             } else {
                                 logger.sth_log(format!("{task_name}: {code} is not expected exit status. Relaunching..."));
-                                let _ = process.run();
+                                if let Err(err) = process.run() {
+                                    logger.sth_log(format!("{task_name}: {err}"));
+                                }
                             }
                         }
                     },
@@ -397,7 +405,9 @@ impl Monitor {
                             process.is_manual_restarting = false;
                             logger
                                 .sth_log(format!("{name}[{i}]: Starting after manual restarting"));
-                            let _ = process.run();
+                            if let Err(err) = process.run() {
+                                logger.sth_log(format!("{name}[{i}]: {err}"));
+                            }
                         }
                     }
                     match &mut process.child {

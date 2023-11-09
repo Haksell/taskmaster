@@ -70,7 +70,9 @@ impl Into<libc::c_int> for StopSignal {
 
 impl State {
     fn at(time_stamp: &SystemTime) -> String {
-        let since_the_epoch = time_stamp.duration_since(UNIX_EPOCH).unwrap();
+        let since_the_epoch = time_stamp
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or(Duration::from_secs(0));
         let now_in_sec = since_the_epoch.as_secs();
         let hours = (now_in_sec % (24 * 3600)) / 3600;
         let minutes = (now_in_sec % 3600) / 60;

@@ -55,14 +55,13 @@ fn parse_arguments() -> (bool, String) {
             _ => {
                 if arg.starts_with("-") {
                     error_exit!("Error: Unknown option: {arg}");
-                } else if filename.is_none() {
-                    filename = Some(arg.clone());
                 } else {
-                    error_exit!(
-                        "Error: Configuration file is already defined: \"{}\". What is \"{}\"?",
-                        filename.unwrap(),
-                        arg
-                    );
+                    match filename {
+                        None => filename = Some(arg.clone()),
+                        Some(old) =>  error_exit!(
+                            "Error: Configuration file is already defined: \"{old}\". What is \"{arg}\"?",
+                        )
+                    }
                 }
             }
         }
