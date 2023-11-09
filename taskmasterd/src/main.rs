@@ -5,6 +5,7 @@ mod monitor;
 mod responder;
 mod sighup_handler;
 mod task;
+mod utils;
 
 use configuration::Configuration;
 use daemonize::Daemonize;

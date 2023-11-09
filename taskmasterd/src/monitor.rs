@@ -5,6 +5,7 @@ use crate::logger::Logger;
 use crate::remove_and_exit;
 use crate::responder::Respond;
 use crate::task::Task;
+use crate::utils::is_time_elapsed;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread;
@@ -406,7 +407,7 @@ impl Monitor {
                     }
                     Some(_) => match task.state {
                         STOPPING(stopped_at) => {
-                            if task.is_passed_stopping_period(stopped_at) {
+                            if is_time_elapsed(stopped_at, task.configuration.stop_time) {
                                 let mut logger = logger.lock().unwrap();
                                 if let Err(err) = task.kill() {
                                     logger.sth_log(format!("Can't kill deprecated task: {}", err));
@@ -461,13 +462,13 @@ impl Monitor {
             for (name, task) in tasks.iter_mut() {
                 for (i, process) in task.iter_mut().enumerate() {
                     if let STARTING(started_at) = process.state {
-                        if process.is_passed_starting_period(started_at) {
+                        if is_time_elapsed(started_at, process.configuration.start_time) {
                             logger.sth_log(format!("{name}[{i}]: is running now"));
                             process.state = RUNNING(started_at);
                         }
                     }
                     if let STOPPING(stopped_at) = process.state {
-                        if process.is_passed_stopping_period(stopped_at) {
+                        if is_time_elapsed(stopped_at, process.configuration.stop_time) {
                             logger.sth_log(format!("{name}[{i}]: Should be killed"));
                             if let Err(err) = process.kill() {
                                 logger.sth_log(format!("{name}[{i}]: {err}"));

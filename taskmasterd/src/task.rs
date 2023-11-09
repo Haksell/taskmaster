@@ -8,7 +8,7 @@ use std::fmt::{Display, Formatter};
 use std::fs::{File, OpenOptions};
 use std::os::unix::process::CommandExt;
 use std::process::{Child, Command, Stdio};
-use std::time::{Duration, SystemTime};
+use std::time::SystemTime;
 
 pub struct Task {
     pub configuration: Configuration,
@@ -175,22 +175,6 @@ impl Task {
 
     pub fn get_json_configuration(&self) -> String {
         serde_json::to_string_pretty(&self.configuration).expect("Serialization failed")
-    }
-
-    pub fn is_passed_starting_period(&self, started_at: SystemTime) -> bool {
-        let current_time = SystemTime::now();
-        let elapsed_time = current_time
-            .duration_since(started_at)
-            .unwrap_or(Duration::from_secs(0));
-        elapsed_time.as_secs() >= self.configuration.start_time
-    }
-
-    pub fn is_passed_stopping_period(&self, stopped_at: SystemTime) -> bool {
-        let current_time = SystemTime::now();
-        let elapsed_time = current_time
-            .duration_since(stopped_at)
-            .unwrap_or(Duration::from_secs(0));
-        elapsed_time.as_secs() >= self.configuration.stop_time
     }
 
     pub fn can_be_launched(&self) -> bool {
