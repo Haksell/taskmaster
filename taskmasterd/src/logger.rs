@@ -86,14 +86,24 @@ impl Logger {
     pub fn get_http_logging_status(&mut self) -> String {
         self.http_log("Http logging status is requested".to_string());
         let message = if let Some((port, stream)) = &mut self.http_log_stream {
-            return match stream.write(&[]) {
-                Ok(_) => format!("enabled localhost:{port}"),
-                Err(err) => format!("connection with localhost:{port} is dead: {err}"),
-            };
+            match stream.write(&[]) {
+                Ok(_) => Ok(format!("enabled localhost:{}", port)),
+                Err(err) => Err(format!(
+                    "connection with localhost:{} is dead: {}",
+                    port, err
+                )),
+            }
         } else {
-            "disabled".to_string()
+            Ok("disabled".to_string())
         };
-        self.http_log(message)
+        let final_msg = match message {
+            Ok(msg) => msg,
+            Err(msg) => {
+                self.http_log_stream = None;
+                msg
+            }
+        };
+        self.http_log(final_msg)
     }
 
     fn do_log_via_http(&mut self, body: &str) -> Result<(), String> {

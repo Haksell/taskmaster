@@ -66,6 +66,7 @@ if __name__ == '__main__':
 
     with ThreadingHTTPServer(('0.0.0.0', args.port), MyHandler) as httpd:
         print(f"Serving on port {args.port}")
+        httpd.allow_reuse_address = True
         server_thread = threading.Thread(target=httpd.serve_forever)
         server_thread.daemon = True
         server_thread.start()
