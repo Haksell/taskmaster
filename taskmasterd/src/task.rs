@@ -232,9 +232,9 @@ impl Display for Task {
                     None => 0,
                     Some(child) => child.id(),
                 };
-                result += &format!("\t\tPID {}", pid)
+                result += &format!(" (PID {})", pid)
             }
-            BACKOFF => result += "\tExited too quickly",
+            BACKOFF => result += " (Exited too quickly)",
             EXITED(_) => {}
             FATAL(_) => {}
         };

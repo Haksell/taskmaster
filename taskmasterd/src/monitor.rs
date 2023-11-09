@@ -96,14 +96,11 @@ impl Monitor {
                             .enumerate()
                             .map(|(position, process)| format!("\n\t{position}. {process}"))
                             .collect();
-                        format!(
-                            "{name}:\t\t{}\t",
-                            if task.len() == 1 {
-                                task[0].to_string()
-                            } else {
-                                process_lines.join("")
-                            }
-                        )
+                        if task.len() == 1 {
+                            format!("{name}: {}", task[0].to_string())
+                        } else {
+                            format!("{name}:\t\t{}", process_lines.join(""))
+                        }
                     })
                     .collect::<Vec<String>>()
                     .join("\n")
