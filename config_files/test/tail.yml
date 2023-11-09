@@ -1,0 +1,7 @@
+tail:
+  cmd: "echo stdout && echo stderr 1>&2"
+  auto_start: true
+  auto_restart: false
+  start_time: 0
+  stdout: /tmp/taskmaster/tail.stdout
+  stderr: /tmp/taskmaster/tail.stderr

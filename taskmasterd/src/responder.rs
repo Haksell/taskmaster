@@ -155,9 +155,10 @@ impl Responder {
                                     thread::spawn(move || loop {
                                         thread::sleep(Duration::from_millis(100));
                                         let new_size = fs::metadata(&filename).unwrap().len(); //TODO: handle
+                                        println!("{last_size} -> {new_size}");
                                         if new_size < last_size {
                                             if let Err(e) = stream.write(
-                                                format!("\n\ntail: {filename}: file truncated\n")
+                                                format!("\n\ntail: {filename}: file truncated\n\n")
                                                     .as_bytes(),
                                             ) {
                                                 eprintln!("{e}");
@@ -170,6 +171,7 @@ impl Responder {
                                         }
                                         let mut new_content = String::new();
                                         file.read_to_string(&mut new_content).unwrap(); //TODO: handle
+                                        println!("{}", new_content.len());
                                         if let Err(e) = stream.write(new_content.as_bytes()) {
                                             eprintln!("{e}");
                                             break;

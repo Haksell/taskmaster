@@ -54,6 +54,7 @@ def communicate(message):
                     return
                 if not part:
                     break
+                open("/tmp/ttt", "a").write(f"\n\n====={part}=====\n\n")
                 print(part, flush=True, end="")
                 if not part.endswith("\n"):
                     needs_newline = True
