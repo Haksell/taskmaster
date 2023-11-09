@@ -27,6 +27,7 @@ pub enum Action {
     Clear(String),
     Config(String),
     HttpLogging(Option<u16>),
+    GetHttpLoggingStatus,
     Maintail(TailType),
     Shutdown,
     Restart(Option<(String, Option<usize>)>),

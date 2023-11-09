@@ -138,7 +138,7 @@ class TaskMasterShell(cmd.Cmd):
         process_cmd(arg, Argument.ONE)
 
     def do_http(self, arg):
-        """http enable <port> : Enable http logging\nhttp disable       : Disable http logging"""
+        """http enable <port> : Enable http logging\nhttp disable       : Disable http logging\nhttp status        : Show http logging status"""
         process_cmd(arg, Argument.HTTP)
 
     def do_maintail(self, arg):

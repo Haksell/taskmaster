@@ -455,11 +455,14 @@ impl Monitor {
                 None => Respond::Message(format!("Can't find \"{task_name}\" task")),
                 Some(task) => Respond::Message(format!("{task_name}: {task}")),
             },
+            Action::GetHttpLoggingStatus => {
+                Respond::Message(self.logger.lock().unwrap().get_http_logging_status())
+            }
             Action::HttpLogging(port) => {
                 let mut logger = self.logger.lock().unwrap();
                 return if let Some(port) = port {
                     Respond::Message(match logger.enable_http_logging(port) {
-                        Ok(_) => "Connected".to_string(),
+                        Ok(_) => "connected".to_string(),
                         Err(err) => err,
                     })
                 } else {

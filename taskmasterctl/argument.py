@@ -71,6 +71,7 @@ def get_tail_type(arg):
 
 def format_arguments_http(command, argc, argv):
     command = "HttpLogging"
+    get_status_command = "GetHttpLoggingStatus"
     if argv[0] == "enable":
         if argc == 1:
             print("http enabling requires a port")
@@ -88,6 +89,13 @@ def format_arguments_http(command, argc, argv):
             return None
         else:
             return {command: None}
+    elif argv[0] == "status":
+        if argc == 2:
+            print("http status does not accept an argument")
+            return None
+        else:
+            return {get_status_command: None}
+
     else:
         print(f"http: unknown keyword: {argv[0]}")
         return None

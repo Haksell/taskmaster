@@ -1,31 +1,32 @@
 import http.server
 import socketserver
+import argparse
+import threading
 
-# Define the port to listen on
-port = 8844
+DEFAULT_PORT = 3000
 messages = []
-
 
 class MyHandler(http.server.SimpleHTTPRequestHandler):
     def do_POST(self):
+        print(f"Content Length: {self.headers['Content-Length']}")
         content_length = int(self.headers['Content-Length'])
         post_data = self.rfile.read(content_length).decode('utf-8')
 
         messages.append(post_data)
+        print(post_data)
 
         self.send_response(200)
+        self.send_header('Connection', 'keep-alive')
         self.end_headers()
 
     def log_message(self, format, *args):
         pass
 
     def do_GET(self):
-        # Generate an HTML page to display the messages and add auto-refresh
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
         self.end_headers()
 
-        # JavaScript to refresh the page every 5 seconds
         refresh_script = """
         <script>
             setTimeout(function(){
@@ -55,9 +56,20 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
 
         self.wfile.write(html_page.encode('utf-8'))
 
+class ThreadingHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
+    pass
 
 if __name__ == '__main__':
-    with socketserver.TCPServer(('0.0.0.0', port), MyHandler) as httpd:
-        print(f"Serving on port {port}")
-        httpd.allow_reuse_address = True
-        httpd.serve_forever()
+    parser = argparse.ArgumentParser(description="Simple HTTP Server")
+    parser.add_argument("--port", type=int, default=DEFAULT_PORT, help="Port to listen on")
+    args = parser.parse_args()
+
+    with ThreadingHTTPServer(('0.0.0.0', args.port), MyHandler) as httpd:
+        print(f"Serving on port {args.port}")
+        server_thread = threading.Thread(target=httpd.serve_forever)
+        server_thread.daemon = True
+        server_thread.start()
+        try:
+            server_thread.join()
+        except KeyboardInterrupt:
+            pass
