@@ -1,14 +1,14 @@
 hello_id:
   cmd: "echo hello $(id)"
-  num_procs: 1
+  num_procs: 1024
   umask: 777
-  auto_start: true
+  auto_start: false
   auto_restart: unexpected
   exit_codes:
     - 0
     - 2
   start_retries: 3
-  start_time: 0
+  start_time: 2
   stop_signal: USR1
   stop_time: 1
   stdout: /tmp/taskmaster/hello_id.stdout

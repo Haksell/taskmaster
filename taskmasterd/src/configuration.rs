@@ -130,8 +130,8 @@ pub struct Configuration {
     pub cmd: String,
     #[validate(range(
         min = 1,
-        max = 100000,
-        message = "num_procs value should be between 1 and 100000"
+        max = 1024,
+        message = "num_procs value should be between 1 and 1024"
     ))]
     pub num_procs: u32,
     #[serde(deserialize_with = "deserialize_umask")]
