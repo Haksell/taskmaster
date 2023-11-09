@@ -19,7 +19,7 @@ pub const PID_FILE_PATH: &'static str = "/tmp/taskmasterd.pid";
 pub const LOG_FILE_PATH: &'static str = "/tmp/taskmasterd.log";
 
 const HELP_MESSAGE: &str = "Options are:\n\t--help: Show help info\
-    \n\t--no-daemonize: Disables daemon mode\
+    \n\t--debug: Disables daemon mode\
     \n\t<path_to_config_file>: Starts server with a configuration";
 
 macro_rules! error_exit {
@@ -51,7 +51,7 @@ fn parse_arguments() -> (bool, String) {
                 println!("{}", HELP_MESSAGE);
                 remove_and_exit(0);
             }
-            "--no-daemonize" => should_daemonize = false,
+            "--debug" => should_daemonize = false,
             _ => {
                 if arg.starts_with("-") {
                     error_exit!("Error: Unknown option: {arg}");

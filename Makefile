@@ -34,7 +34,7 @@ daemon: tmptaskmaster
 	cargo run --manifest-path taskmasterd/Cargo.toml -- $(CONFIG)
 
 nodaemon: tmptaskmaster
-	cargo run --manifest-path taskmasterd/Cargo.toml -- --no-daemonize $(CONFIG)
+	cargo run --manifest-path taskmasterd/Cargo.toml -- --debug $(CONFIG)
 
 stop:
 	-@kill -TERM $$(cat $(PID_FILE) 2>/dev/null) 2>/dev/null

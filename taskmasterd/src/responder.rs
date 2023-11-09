@@ -67,7 +67,7 @@ impl Responder {
         true
     }
 
-    fn handle_response(&mut self, mut stream: UnixStream, respond: Respond) {
+    fn handle_response(&mut self, stream: UnixStream, respond: Respond) {
         match respond {
             Message(message) => {
                 let mut logger = self.logger.lock().unwrap();
