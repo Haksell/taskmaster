@@ -1,0 +1,9 @@
+umask:
+  cmd: "./scripts/umask.sh"
+  num_procs: 1
+  auto_start: false
+  auto_restart: false
+  umask: 077
+  start_time: 0
+  stdout: /tmp/taskmaster/umask.stdout
+  stderr: /tmp/taskmaster/umask.stderr

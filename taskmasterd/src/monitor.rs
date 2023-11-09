@@ -68,7 +68,11 @@ impl Monitor {
             }
             is_present
         });
-        result
+        if result.is_empty() {
+            "Already up to date.".to_string()
+        } else {
+            result
+        }
     }
 
     fn get_task_status(&mut self, task_name: Option<String>) -> String {

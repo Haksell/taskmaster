@@ -49,7 +49,7 @@ show_signal:
 
 echo_answer_inf_loop:
   cmd: "./scripts/echo_answer_inf_loop.sh"
-  num_procs: 2
+  num_procs: 1
   umask: 777
   auto_start: true
   auto_restart: unexpected
@@ -61,3 +61,5 @@ echo_answer_inf_loop:
   stop_signal: USR1
   stop_time: 10
   stdout: /tmp/taskmaster/echo_answer_inf_loop.stdout
+  env:
+    ANSWER: 42

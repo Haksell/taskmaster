@@ -6,7 +6,7 @@ rmrf:
   auto_restart: unexpected
   exit_codes:
     - 0
-    - 2
+    - 1
   start_retries: 3
   start_time: 0
   stop_signal: USR1

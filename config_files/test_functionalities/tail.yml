@@ -1,5 +1,5 @@
 tail:
-  cmd: "echo stdout && echo 1>&2 stderr"
+  cmd: "./scripts/stdout_stderr.sh"
   num_procs: 1
   auto_start: false
   auto_restart: false
