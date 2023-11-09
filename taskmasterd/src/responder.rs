@@ -50,7 +50,7 @@ impl Responder {
 
     fn write_message(
         mut stream: &UnixStream,
-        message: String,
+        message: &str,
         logger: &mut MutexGuard<Logger>,
     ) -> bool {
         if let Err(e) = stream.write(message.as_bytes()) {
@@ -67,18 +67,11 @@ impl Responder {
         true
     }
 
-    fn get_file_len(filename: &str) -> Result<u64, String> {
-        match fs::metadata(&filename) {
-            Ok(metadata) => Ok(metadata.len()),
-            Err(err) => Err(err.to_string()),
-        }
-    }
-
     fn handle_response(&mut self, mut stream: UnixStream, respond: Respond) {
         match respond {
             Message(message) => {
                 let mut logger = self.logger.lock().unwrap();
-                Responder::write_message(&stream, message, &mut logger);
+                Responder::write_message(&stream, &message, &mut logger);
             }
             Respond::MaintailStream(num_lines) => {
                 let logger_clone = self.logger.clone();
@@ -106,7 +99,7 @@ impl Responder {
                         while !history_buffer.is_empty() {
                             if let Some((idx, message)) = history_buffer.pop_front() {
                                 last_logged_idx = idx;
-                                if !Responder::write_message(&stream, message, &mut logger) {
+                                if !Responder::write_message(&stream, &message, &mut logger) {
                                     eprintln!("Exiting maintail -f: can't write or flush");
                                     break 'outer;
                                 }
@@ -138,7 +131,7 @@ impl Responder {
                             let mut logger = self.logger.lock().unwrap();
                             match num_lines {
                                 None => {
-                                    Responder::write_message(&stream, buffer, &mut logger);
+                                    Responder::write_message(&stream, &buffer, &mut logger);
                                 }
                                 Some(num) => {
                                     let mut lines: Vec<String> =
@@ -148,36 +141,20 @@ impl Responder {
                                     if !buffer.ends_with("\n") {
                                         output += "\n";
                                     }
-                                    Responder::write_message(&stream, output, &mut logger);
+                                    Responder::write_message(&stream, &output, &mut logger);
                                 }
                             }
                             if is_stream {
-                                let mut last_size;
-                                match Responder::get_file_len(&filename) {
-                                    Ok(size) => {
-                                        last_size = size;
-                                    }
-                                    Err(err) => {
-                                        Responder::write_message(
-                                            &stream,
-                                            format!("Can't access len of {filename}: {err}"),
-                                            &mut logger,
-                                        );
-                                        return;
-                                    }
-                                };
+                                let mut last_size = buffer.len() as u64;
                                 thread::spawn(move || loop {
                                     thread::sleep(Duration::from_millis(100));
                                     let mut logger = logger_clone.lock().unwrap();
-                                    let new_size;
-                                    match Responder::get_file_len(&filename) {
-                                        Ok(size) => {
-                                            new_size = size;
-                                        }
+                                    let new_size = match fs::metadata(&filename) {
+                                        Ok(metadata) => metadata.len(),
                                         Err(err) => {
                                             Responder::write_message(
                                                 &stream,
-                                                format!("Can't access len of {filename}: {err}"),
+                                                &format!("\nCan't access len of {filename}: {err}"),
                                                 &mut logger,
                                             );
                                             return;
@@ -186,7 +163,7 @@ impl Responder {
                                     if new_size < last_size {
                                         if !Responder::write_message(
                                             &stream,
-                                            format!("\n\ntail: {filename}: file truncated\n\n"),
+                                            &format!("\n\ntail: {filename}: file truncated\n\n"),
                                             &mut logger,
                                         ) {
                                             return;
@@ -194,28 +171,30 @@ impl Responder {
                                         if let Err(err) = file.seek(std::io::SeekFrom::Start(0)) {
                                             Responder::write_message(
                                                 &stream,
-                                                format!(
+                                                &format!(
                                                     "\nFailed to rewind file {filename}: {err}"
                                                 ),
                                                 &mut logger,
                                             );
                                             return;
                                         }
-                                    } else if new_size == last_size {
-                                        continue;
-                                    }
-                                    let mut new_content = String::new();
-                                    if let Err(err) = file.read_to_string(&mut new_content) {
-                                        Responder::write_message(
+                                    } else if new_size > last_size {
+                                        let mut new_content = String::new();
+                                        if let Err(err) = file.read_to_string(&mut new_content) {
+                                            Responder::write_message(
+                                                &stream,
+                                                &format!("\nFailed to read file {filename}: {err}"),
+                                                &mut logger,
+                                            );
+                                            return;
+                                        }
+                                        if !Responder::write_message(
                                             &stream,
-                                            format!("\nFailed to read file {filename}: {err}"),
+                                            &new_content,
                                             &mut logger,
-                                        );
-                                        return;
-                                    }
-                                    if !Responder::write_message(&stream, new_content, &mut logger)
-                                    {
-                                        return;
+                                        ) {
+                                            return;
+                                        }
                                     }
                                     last_size = new_size;
                                 });
@@ -224,7 +203,7 @@ impl Responder {
                         Err(err) => {
                             Responder::write_message(
                                 &stream,
-                                format!("\nFailed to read file {filename}: {err}"),
+                                &format!("Failed to read file {filename}: {err}"),
                                 &mut self.logger.lock().unwrap(),
                             );
                         }
@@ -233,7 +212,7 @@ impl Responder {
                 Err(err) => {
                     Responder::write_message(
                         &stream,
-                        format!("\nFailed to open file {filename}: {err}"),
+                        &format!("Failed to open file {filename}: {err}"),
                         &mut self.logger.lock().unwrap(),
                     );
                 }
