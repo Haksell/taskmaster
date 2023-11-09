@@ -1,7 +1,7 @@
 extern crate libc;
 
 use crate::action::OutputType;
-use crate::configuration::State::*;
+use crate::configuration::{self, State::*};
 use crate::configuration::{Configuration, State};
 use libc::{mode_t, pid_t};
 use std::fmt::{Display, Formatter};
@@ -145,6 +145,29 @@ impl Task {
             }
         }
     }
+
+    // fn control_log_file_limit(&mut self, file_name: &str) -> String {
+    //     match self.state {
+    //         STARTING(_) | RUNNING(_) => {
+    //             match Task::open_file(file_name) {
+    //                 Ok(file) => {
+
+    //                 },
+    //                 Err(err) => s,
+    //             }
+    //         }
+    //         _ => {},
+    //     }
+    // }
+
+    // pub fn control_log_files_limit(&mut self) -> (String, String) {
+    //     if let Some(file_name) = self.configuration.stdout {
+    //         self.control_log_file_limit(&file_name)
+    //     }
+    //     if let Some(file_name) = self.configuration.stderr {
+    //         self.control_log_file_limit(&file_name)
+    //     }
+    // }
 
     pub fn get_json_configuration(&self) -> String {
         serde_json::to_string_pretty(&self.configuration).expect("Serialization failed")

@@ -122,7 +122,11 @@ impl Display for State {
 #[serde(default)]
 pub struct Configuration {
     #[serde(deserialize_with = "deserialize_string_and_trim")]
-    #[validate(length(min = 1, message = "cmd: can't be empty"))]
+    #[validate(length(
+        min = 1,
+        max = 1024,
+        message = "cmd: can't be empty or bigger than 1024"
+    ))]
     pub cmd: String,
     #[validate(range(
         min = 1,
@@ -148,6 +152,12 @@ pub struct Configuration {
     #[serde(deserialize_with = "deserialize_option_string_and_trim")]
     pub stderr: Option<String>,
     pub env: BTreeMap<String, String>,
+    #[validate(range(
+        min = 1048576,
+        max = 104857600,
+        message = "min=1MB(\"1048576\" bytes). max=100MB(\"104857600\" bytes)"
+    ))]
+    pub logfile_maxbytes: usize,
 }
 
 impl Default for Configuration {
@@ -167,6 +177,7 @@ impl Default for Configuration {
             stdout: None,
             stderr: None,
             env: Default::default(),
+            logfile_maxbytes: 10 << 20,
         }
     }
 }
@@ -245,5 +256,16 @@ fn deserialize_option_string_and_trim<'de, D>(deserializer: D) -> Result<Option<
 where
     D: Deserializer<'de>,
 {
-    String::deserialize(deserializer).map(|s| Some(s.trim().to_string()))
+    const MAX_SIZE: usize = 1024;
+
+    let s: String = Deserialize::deserialize(deserializer)?;
+    let trimmed = s.trim().to_string();
+    if trimmed.len() > MAX_SIZE {
+        Err(serde::de::Error::custom(format!(
+            "Filename is too long (max={})",
+            MAX_SIZE
+        )))
+    } else {
+        Ok(Some(trimmed))
+    }
 }
