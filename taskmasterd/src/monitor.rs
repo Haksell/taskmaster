@@ -5,7 +5,6 @@ use crate::logger::Logger;
 use crate::remove_and_exit;
 use crate::responder::Respond;
 use crate::task::Task;
-use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread;
@@ -13,6 +12,7 @@ use std::time::{Duration, SystemTime};
 
 pub struct Monitor {
     tasks: Arc<Mutex<BTreeMap<String, Vec<Task>>>>,
+    deprecated_tasks: Arc<Mutex<Vec<Task>>>,
     logger: Arc<Mutex<Logger>>,
     config_path: String,
 }
@@ -21,6 +21,7 @@ impl Monitor {
     pub fn new(config_path: String, logger: Arc<Mutex<Logger>>) -> Monitor {
         Monitor {
             tasks: Arc::new(Mutex::new(BTreeMap::new())),
+            deprecated_tasks: Arc::new(Mutex::new(Vec::new())),
             logger,
             config_path,
         }
@@ -33,20 +34,28 @@ impl Monitor {
         logger.monit_log("Configuration loading has been initiated".to_string());
         for (task_name, config) in &configs {
             let update = Task::new(&config);
-            match tasks.entry(task_name.clone()) {
-                Entry::Vacant(entry) => {
+            match tasks.remove(task_name) {
+                None => {
                     logger.monit_log(format!("New task: {task_name} has been added"));
-                    entry.insert((0..config.num_procs).map(|_| Task::new(&config)).collect());
+                    tasks.insert(
+                        task_name.clone(),
+                        (0..config.num_procs).map(|_| Task::new(&config)).collect(),
+                    );
                     result += &format!("{task_name}: added\n");
                 }
-                Entry::Occupied(mut entry) => {
-                    if entry.get()[0].configuration != update.configuration {
-                        entry.insert((0..config.num_procs).map(|_| Task::new(&config)).collect());
+                Some(old) => {
+                    if old[0].configuration != update.configuration {
+                        tasks.insert(
+                            task_name.clone(),
+                            (0..config.num_procs).map(|_| Task::new(&config)).collect(),
+                        );
                         logger.monit_log(format!(
                             "Existing task: {task_name} was modified, changes has been applied"
                         ));
+                        self.deprecated_tasks.lock().unwrap().extend(old);
                         result += &format!("{task_name}: updated\n")
                     } else {
+                        tasks.insert(task_name.clone(), old);
                         logger.monit_log(format!("Existing task: {task_name} wasn't modified"));
                     }
                 }
@@ -55,8 +64,7 @@ impl Monitor {
         tasks.retain(|task_name, _task| {
             let is_present = configs.contains_key(task_name);
             if !is_present {
-                result += &format!("{task_name}: deleted\n");
-                logger.monit_log(format!("{task_name} has been deleted"));
+                result += &logger.monit_log(format!("{task_name} has been deleted"));
             }
             is_present
         });
@@ -378,11 +386,46 @@ impl Monitor {
         }
     }
 
+    fn handle_deprecated_tasks(
+        logger: &Arc<Mutex<Logger>>,
+        deprecated_tasks: &Arc<Mutex<Vec<Task>>>,
+    ) {
+        let mut deprecated_tasks = deprecated_tasks.lock().unwrap();
+
+        for i in (0..deprecated_tasks.len()).rev() {
+            if let Some(task) = deprecated_tasks.get_mut(i) {
+                match &task.child {
+                    None => {
+                        deprecated_tasks.remove(i);
+                    }
+                    Some(_) => match task.state {
+                        STOPPING(stopped_at) => {
+                            if task.is_passed_stopping_period(stopped_at) {
+                                let mut logger = logger.lock().unwrap();
+                                if let Err(err) = task.kill() {
+                                    logger.sth_log(format!("Can't kill deprecated task: {}", err));
+                                }
+                            }
+                        }
+                        STOPPED(_) => {
+                            deprecated_tasks.remove(i);
+                        }
+                        _ => {
+                            let _ = task.stop();
+                        }
+                    },
+                }
+            }
+        }
+    }
+
     pub fn track(&self) {
         let monitor_clone = self.tasks.clone();
+        let deprecated_tasks_clone = self.deprecated_tasks.clone();
         let logger_clone = self.logger.clone();
 
         thread::spawn(move || loop {
+            Monitor::handle_deprecated_tasks(&logger_clone, &deprecated_tasks_clone);
             let mut tasks = monitor_clone.lock().unwrap();
             let mut logger = logger_clone.lock().unwrap();
             for (name, task) in tasks.iter_mut() {

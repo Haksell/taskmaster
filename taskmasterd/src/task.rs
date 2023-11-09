@@ -208,7 +208,7 @@ impl Task {
     ) -> String {
         match file_name {
             None => format!("{task_name} does not have a {output_type} log file\n"),
-            Some(file_name) => match std::fs::File::create(&file_name) {
+            Some(file_name) => match File::create(&file_name) {
                 Ok(file) => {
                     if let Err(e) = file.set_len(0) {
                         format!("Failed to clear {output_type} log file for {task_name}: {e}\n")
