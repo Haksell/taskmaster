@@ -23,10 +23,10 @@ const HELP_MESSAGE: &str = "Options are:\n\t--help: Show help info\
     \n\t<path_to_config_file>: Starts server with a configuration";
 
 macro_rules! error_exit {
-    ($($arg:tt)*) => {
+    ($code:expr, $($arg:tt)*) => {
         {
             eprintln!($($arg)*);
-            remove_and_exit(2);
+            remove_and_exit($code);
         }
     };
 }
@@ -45,8 +45,10 @@ pub fn remove_and_exit(exit_code: i32) -> ! {
 fn check_root_user() {
     let euid = unsafe { libc::geteuid() };
     if euid != 0 {
-        eprintln!("Error: taskmasterd must be run as the root user in non-debug mode.");
-        remove_and_exit(1);
+        error_exit!(
+            1,
+            "Error: taskmasterd must be run as the root user in non-debug mode."
+        );
     }
 }
 
@@ -62,11 +64,11 @@ fn parse_arguments() -> (bool, String) {
             "--debug" => should_daemonize = false,
             _ => {
                 if arg.starts_with("-") {
-                    error_exit!("Error: Unknown option: {arg}");
+                    error_exit!(2, "Error: Unknown option: {arg}");
                 } else {
                     match filename {
                         None => filename = Some(arg.clone()),
-                        Some(old) =>  error_exit!(
+                        Some(old) =>  error_exit!(2,
                             "Error: Configuration file is already defined: \"{old}\". What is \"{arg}\"?",
                         )
                     }
@@ -76,7 +78,7 @@ fn parse_arguments() -> (bool, String) {
     }
     match filename {
         Some(filename) => (should_daemonize, filename),
-        None => error_exit!("Error: No configuration file given"),
+        None => error_exit!(2, "Error: No configuration file given"),
     }
 }
 
@@ -101,8 +103,7 @@ fn main() {
                     monitor.update_configuration(conf);
                 }
                 Err(err_msg) => {
-                    eprintln!("{}", err_msg);
-                    remove_and_exit(2)
+                    error_exit!(2, "{err_msg}");
                 }
             }
 
@@ -125,7 +126,7 @@ fn main() {
             }
         }
         Err(error) => {
-            error_exit!("{error}")
+            error_exit!(1, "{error}")
         }
     }
     remove_files();
