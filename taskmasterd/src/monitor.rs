@@ -423,6 +423,30 @@ impl Monitor {
         }
     }
 
+    pub fn kill_all(&self) {
+        let mut logger = self.logger.lock().unwrap();
+        logger.monit_log("Killing all launched tasks".to_string());
+        for (task_name, process_group) in self.tasks.lock().unwrap().iter_mut() {
+            for (i, task) in process_group.iter_mut().enumerate() {
+                if let Some(_) = task.child {
+                    logger.monit_log(format!("Killing {task_name}[{i}]..."));
+                    if let Err(msg) = task.kill() {
+                        logger.monit_log(msg);
+                    }
+                }
+            }
+        }
+        logger.monit_log("Killing all deprecated tasks".to_string());
+        for (i, task) in self.deprecated_tasks.lock().unwrap().iter_mut().enumerate() {
+            if let Some(_) = task.child {
+                logger.monit_log(format!("Killing deprecated task #{i}..."));
+                if let Err(msg) = task.kill() {
+                    logger.monit_log(msg);
+                }
+            }
+        }
+    }
+
     pub fn track(&self) {
         let monitor_clone = self.tasks.clone();
         let deprecated_tasks_clone = self.deprecated_tasks.clone();
@@ -542,7 +566,10 @@ impl Monitor {
                     )
                 }
             },
-            Action::Shutdown => remove_and_exit(0),
+            Action::Shutdown => {
+                self.kill_all();
+                remove_and_exit(0)
+            }
             Action::Signal(signum, task_name, idx) => {
                 Respond::Message(self.signal_task(signum, &task_name, idx))
             }
