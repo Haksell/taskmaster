@@ -6,17 +6,18 @@ import threading
 DEFAULT_PORT = 3000
 messages = []
 
+
 class MyHandler(http.server.SimpleHTTPRequestHandler):
     def do_POST(self):
         print(f"Content Length: {self.headers['Content-Length']}")
-        content_length = int(self.headers['Content-Length'])
-        post_data = self.rfile.read(content_length).decode('utf-8')
+        content_length = int(self.headers["Content-Length"])
+        post_data = self.rfile.read(content_length).decode("utf-8")
 
         messages.append(post_data)
         print(post_data)
 
         self.send_response(200)
-        self.send_header('Connection', 'keep-alive')
+        self.send_header("Connection", "keep-alive")
         self.end_headers()
 
     def log_message(self, format, *args):
@@ -24,7 +25,7 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
 
     def do_GET(self):
         self.send_response(200)
-        self.send_header('Content-type', 'text/html')
+        self.send_header("Content-type", "text/html")
         self.end_headers()
 
         refresh_script = """
@@ -54,17 +55,21 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
         </html>
         """
 
-        self.wfile.write(html_page.encode('utf-8'))
+        self.wfile.write(html_page.encode("utf-8"))
+
 
 class ThreadingHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
     pass
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Simple HTTP Server")
-    parser.add_argument("--port", type=int, default=DEFAULT_PORT, help="Port to listen on")
+    parser.add_argument(
+        "--port", type=int, default=DEFAULT_PORT, help="Port to listen on"
+    )
     args = parser.parse_args()
 
-    with ThreadingHTTPServer(('0.0.0.0', args.port), MyHandler) as httpd:
+    with ThreadingHTTPServer(("0.0.0.0", args.port), MyHandler) as httpd:
         print(f"Serving on port {args.port}")
         httpd.allow_reuse_address = True
         server_thread = threading.Thread(target=httpd.serve_forever)
