@@ -3,9 +3,10 @@ extern crate libc;
 use crate::action::OutputType;
 use crate::configuration::State::*;
 use crate::configuration::{Configuration, State};
+use crate::utils::open_file;
 use libc::{mode_t, pid_t};
 use std::fmt::{Display, Formatter};
-use std::fs::{File, OpenOptions};
+use std::fs::File;
 use std::os::unix::process::CommandExt;
 use std::process::{Child, Command, Stdio};
 use std::time::SystemTime;
@@ -31,17 +32,9 @@ impl Task {
         }
     }
 
-    fn open_file(path: &String) -> Result<File, String> {
-        OpenOptions::new()
-            .append(true)
-            .create(true)
-            .open(path)
-            .map_err(|e| e.to_string())
-    }
-
     fn setup_stream(&self, stream_type: &Option<String>) -> Result<Stdio, String> {
         match stream_type {
-            Some(path) => Task::open_file(path).map(|file| file.into()),
+            Some(path) => open_file(path).map(|file| file.into()),
             None => Ok(Stdio::null()),
         }
     }

@@ -453,7 +453,7 @@ impl Monitor {
         let logger_clone = self.logger.clone();
 
         thread::spawn(move || loop {
-            Monitor::handle_deprecated_tasks(&logger_clone, &deprecated_tasks_clone);
+            Self::handle_deprecated_tasks(&logger_clone, &deprecated_tasks_clone);
             let mut tasks = monitor_clone.lock().unwrap();
             let mut logger = logger_clone.lock().unwrap();
             for (name, task) in tasks.iter_mut() {
@@ -485,7 +485,7 @@ impl Monitor {
                     match &mut process.child {
                         Some(child) => match child.try_wait() {
                             Ok(Some(status)) => {
-                                Monitor::manage_finished_state(
+                                Self::manage_finished_state(
                                     process,
                                     format!("{name}[{i}]"),
                                     status.code(),
