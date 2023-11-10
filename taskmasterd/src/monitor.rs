@@ -7,6 +7,8 @@ use crate::responder::Respond;
 use crate::task::Task;
 use crate::utils::is_time_elapsed;
 use std::collections::BTreeMap;
+use std::fs::OpenOptions;
+use std::io::{self, Read, Seek, SeekFrom, Write};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread;
 use std::time::{Duration, SystemTime};
@@ -65,7 +67,7 @@ impl Monitor {
         tasks.retain(|task_name, _task| {
             let is_present = configs.contains_key(task_name);
             if !is_present {
-                result += &logger.monit_log(format!("{task_name} has been deleted"));
+                result += &logger.monit_log(format!("{task_name} has been deleted\n"));
             }
             is_present
         });
@@ -456,40 +458,105 @@ impl Monitor {
         }
     }
 
+    pub fn truncate_file(filename: &str, size: u64) -> io::Result<()> {
+        let file = OpenOptions::new().read(true).write(true).open(filename)?;
+        let mut file = io::BufReader::new(file);
+        let mut contents = Vec::new();
+        let _ = file.seek(SeekFrom::Start(size / 2))?;
+        file.read_to_end(&mut contents)?;
+        drop(file);
+        let mut file = OpenOptions::new()
+            .write(true)
+            .truncate(true)
+            .open(filename)?;
+        file.write_all(b"[TRUNCATED]\n")?;
+        file.write_all(&contents)?;
+        Ok(())
+    }
+
+    pub fn control_log_file_limit(
+        logger: &Arc<Mutex<Logger>>,
+        filename: &Option<String>,
+        max_size: u64,
+    ) {
+        if let Some(filename) = filename {
+            if let Ok(metadata) = std::fs::metadata(&filename) {
+                let size = metadata.len();
+                if size > max_size {
+                    match Self::truncate_file(&filename, size) {
+                        Ok(_) => {
+                            let mut logger = logger.lock().unwrap();
+                            logger.sth_log(format!("{filename} was truncated from {size} bytes."));
+                        }
+                        Err(err) => {
+                            let mut logger = logger.lock().unwrap();
+                            logger.sth_log(format!("Failed to truncate {filename}: {err}"));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn control_log_files_limit(
+        logger: &Arc<Mutex<Logger>>,
+        tasks: &Arc<Mutex<BTreeMap<String, Vec<Task>>>>,
+    ) {
+        {
+            let mut logger = logger.lock().unwrap();
+            logger.sth_log(format!("===================================="));
+        }
+        for (_, task_group) in tasks.lock().unwrap().iter() {
+            let max_size = task_group[0].configuration.logfile_maxbytes;
+            Self::control_log_file_limit(&logger, &task_group[0].configuration.stdout, max_size);
+            Self::control_log_file_limit(&logger, &task_group[0].configuration.stderr, max_size);
+        }
+        {
+            let mut logger = logger.lock().unwrap();
+            logger.sth_log(format!("===================================="));
+        }
+    }
+
     pub fn track(&self) {
         let monitor_clone = self.tasks.clone();
         let deprecated_tasks_clone = self.deprecated_tasks.clone();
+        let tasks_clone = self.tasks.clone();
         let logger_clone = self.logger.clone();
 
         thread::spawn(move || loop {
             Self::handle_deprecated_tasks(&logger_clone, &deprecated_tasks_clone);
+            Self::control_log_files_limit(&logger_clone, &tasks_clone);
             let mut tasks = monitor_clone.lock().unwrap();
             let mut logger = logger_clone.lock().unwrap();
             for (name, task) in tasks.iter_mut() {
                 for (i, process) in task.iter_mut().enumerate() {
-                    if let STARTING(started_at) = process.state {
-                        if is_time_elapsed(started_at, process.configuration.start_time) {
-                            logger.sth_log(format!("{name}[{i}]: is running now"));
-                            process.state = RUNNING(started_at);
-                        }
-                    }
-                    if let STOPPING(stopped_at) = process.state {
-                        if is_time_elapsed(stopped_at, process.configuration.stop_time) {
-                            logger.sth_log(format!("{name}[{i}]: Should be killed"));
-                            if let Err(err) = process.kill() {
-                                logger.sth_log(format!("{name}[{i}]: {err}"));
+                    match process.state {
+                        STARTING(started_at) => {
+                            if is_time_elapsed(started_at, process.configuration.start_time) {
+                                logger.sth_log(format!("{name}[{i}]: is running now"));
+                                process.state = RUNNING(started_at);
                             }
                         }
-                    }
-                    if let STOPPED(_) = process.state {
-                        if process.is_manual_restarting {
-                            process.is_manual_restarting = false;
-                            logger
-                                .sth_log(format!("{name}[{i}]: Starting after manual restarting"));
-                            if let Err(err) = process.run() {
-                                logger.sth_log(format!("{name}[{i}]: {err}"));
+                        STOPPING(stopped_at) => {
+                            if is_time_elapsed(stopped_at, process.configuration.stop_time) {
+                                logger.sth_log(format!("{name}[{i}]: Should be killed"));
+                                if let Err(err) = process.kill() {
+                                    logger.sth_log(format!("{name}[{i}]: {err}"));
+                                }
                             }
                         }
+                        STOPPED(_) => {
+                            if process.is_manual_restarting {
+                                process.is_manual_restarting = false;
+                                logger.sth_log(format!(
+                                    "{name}[{i}]: Starting after manual restarting"
+                                ));
+                                if let Err(err) = process.run() {
+                                    logger.sth_log(format!("{name}[{i}]: {err}"));
+                                }
+                            }
+                        }
+                        _ => {}
                     }
                     match &mut process.child {
                         Some(child) => match child.try_wait() {
@@ -517,7 +584,7 @@ impl Monitor {
             }
             drop(logger);
             drop(tasks);
-            thread::sleep(Duration::from_millis(50));
+            thread::sleep(Duration::from_millis(100));
         });
     }
 

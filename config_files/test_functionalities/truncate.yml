@@ -1,0 +1,8 @@
+truncate:
+  cmd: "./scripts/truncate.sh"
+  num_procs: 1
+  auto_start: false
+  auto_restart: true
+  start_retries: 100
+  logfile_maxbytes: 1024
+  stdout: /tmp/taskmaster/truncate.stdout

@@ -122,7 +122,7 @@ impl Responder {
                         }
 
                         drop(logger);
-                        thread::sleep(Duration::from_millis(50));
+                        thread::sleep(Duration::from_millis(100));
                     }
                 });
             }
@@ -152,7 +152,7 @@ impl Responder {
                             if is_stream {
                                 let mut last_size = buffer.len() as u64;
                                 thread::spawn(move || loop {
-                                    thread::sleep(Duration::from_millis(50));
+                                    thread::sleep(Duration::from_millis(100));
                                     let mut logger = logger_clone.lock().unwrap();
                                     let new_size = match fs::metadata(&filename) {
                                         Ok(metadata) => metadata.len(),

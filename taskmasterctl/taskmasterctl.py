@@ -180,7 +180,10 @@ class TaskMasterShell(cmd.Cmd):
     def complete_update(self, text, line, *_):
         mline = line.partition(" ")[2]
         offs = len(mline) - len(text)
-        return [fp[offs:] for fp in glob.glob(mline + "*")]
+        return [
+            fp[offs:] + "/" if os.path.isdir(fp) else fp[offs:]
+            for fp in glob.glob(mline + "*")
+        ]
 
 
 if __name__ == "__main__":

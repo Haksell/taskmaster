@@ -158,11 +158,11 @@ pub struct Configuration {
     pub stderr: Option<String>,
     pub env: BTreeMap<String, String>,
     #[validate(range(
-        min = 1048576,
+        min = 1024,
         max = 104857600,
-        message = "min=1MB(\"1048576\" bytes). max=100MB(\"104857600\" bytes)"
+        message = "logfile_maxbytes: min=1kB(1024), max=100MB(104857600)"
     ))]
-    pub logfile_maxbytes: usize,
+    pub logfile_maxbytes: u64,
 }
 
 impl Default for Configuration {
