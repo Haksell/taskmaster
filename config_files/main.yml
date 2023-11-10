@@ -5,15 +5,14 @@ hello_id:
   auto_start: false
   auto_restart: unexpected
   exit_codes:
-    - 1
+    - 0
     - 2
   start_retries: 100
-  start_time: 2
+  start_time: 0
   stop_signal: USR1
   stop_time: 1
   stdout: /tmp/taskmaster/hello_id.stdout
   stderr: /tmp/taskmaster/hello_id.stderr
-
 
 sleep_ls:
   cmd: "./scripts/sleep_ls.sh"
