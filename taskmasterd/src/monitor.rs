@@ -458,54 +458,19 @@ impl Monitor {
         }
     }
 
-    pub fn truncate_file(filename: &str, size: u64) -> io::Result<()> {
-        let file = OpenOptions::new().read(true).write(true).open(filename)?;
-        let mut file = io::BufReader::new(file);
-        let mut contents = Vec::new();
-        let _ = file.seek(SeekFrom::Start(size / 2))?;
-        file.read_to_end(&mut contents)?;
-        drop(file);
-        let mut file = OpenOptions::new()
-            .write(true)
-            .truncate(true)
-            .open(filename)?;
-        file.write_all(b"[TRUNCATED]\n")?;
-        file.write_all(&contents)?;
-        Ok(())
-    }
-
-    pub fn control_log_file_limit(
-        logger: &Arc<Mutex<Logger>>,
-        filename: &Option<String>,
-        max_size: u64,
-    ) {
-        if let Some(filename) = filename {
-            if let Ok(metadata) = std::fs::metadata(&filename) {
-                let size = metadata.len();
-                if size > max_size {
-                    match Self::truncate_file(&filename, size) {
-                        Ok(_) => {
-                            let mut logger = logger.lock().unwrap();
-                            logger.sth_log(format!("{filename} was truncated from {size} bytes."));
-                        }
-                        Err(err) => {
-                            let mut logger = logger.lock().unwrap();
-                            logger.sth_log(format!("Failed to truncate {filename}: {err}"));
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     pub fn control_log_files_limit(
         logger: &Arc<Mutex<Logger>>,
         tasks: &Arc<Mutex<BTreeMap<String, Vec<Task>>>>,
     ) {
         for (_, task_group) in tasks.lock().unwrap().iter() {
             let max_size = task_group[0].configuration.logfile_maxbytes;
-            Self::control_log_file_limit(&logger, &task_group[0].configuration.stdout, max_size);
-            Self::control_log_file_limit(&logger, &task_group[0].configuration.stderr, max_size);
+            let logs = task_group[0].control_log_files_limit(max_size);
+            if !logs.is_empty() {
+                let mut logger = logger.lock().unwrap();
+                for log in logs {
+                    logger.sth_log(log);
+                }
+            }
         }
     }
 

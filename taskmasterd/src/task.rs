@@ -6,7 +6,8 @@ use crate::configuration::{Configuration, State};
 use crate::utils::open_file;
 use libc::{mode_t, pid_t};
 use std::fmt::{Display, Formatter};
-use std::fs::File;
+use std::fs::{File, OpenOptions};
+use std::io::{self, Read, Seek, SeekFrom, Write};
 use std::os::unix::process::CommandExt;
 use std::process::{Child, Command, Stdio};
 use std::time::SystemTime;
@@ -187,6 +188,43 @@ impl Task {
             self.configuration.stderr.clone(),
             OutputType::Stderr,
         )
+    }
+
+    pub fn truncate_file(filename: &str, size: u64) -> io::Result<()> {
+        let file = OpenOptions::new().read(true).write(true).open(filename)?;
+        let mut file = io::BufReader::new(file);
+        let mut contents = Vec::new();
+        let _ = file.seek(SeekFrom::Start(size / 2))?;
+        file.read_to_end(&mut contents)?;
+        drop(file);
+        let mut file = OpenOptions::new()
+            .write(true)
+            .truncate(true)
+            .open(filename)?;
+        file.write_all(b"[TRUNCATED]\n")?;
+        file.write_all(&contents)?;
+        Ok(())
+    }
+
+    fn control_log_file_limit(filename: &Option<String>, max_size: u64, logs: &mut Vec<String>) {
+        if let Some(filename) = filename {
+            if let Ok(metadata) = std::fs::metadata(&filename) {
+                let size = metadata.len();
+                if size > max_size {
+                    logs.push(match Self::truncate_file(&filename, size) {
+                        Ok(_) => format!("{filename} was truncated from {size} bytes."),
+                        Err(err) => format!("Failed to truncate {filename}: {err}"),
+                    });
+                }
+            }
+        }
+    }
+
+    pub fn control_log_files_limit(&self, max_size: u64) -> Vec<String> {
+        let mut logs = Vec::new();
+        Self::control_log_file_limit(&self.configuration.stdout, max_size, &mut logs);
+        Self::control_log_file_limit(&self.configuration.stderr, max_size, &mut logs);
+        logs
     }
 }
 
