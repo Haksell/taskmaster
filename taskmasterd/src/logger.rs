@@ -98,13 +98,10 @@ impl Logger {
         } else {
             Ok("disabled".to_string())
         };
-        let final_msg = match message {
-            Ok(msg) => msg,
-            Err(msg) => {
-                self.http_log_stream = None;
-                msg
-            }
-        };
+        let final_msg = message.unwrap_or_else(|err_msg| {
+            self.http_log_stream = None;
+            err_msg
+        });
         self.http_log(final_msg)
     }
 

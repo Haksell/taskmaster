@@ -423,7 +423,7 @@ impl Monitor {
         }
     }
 
-    pub fn kill_all(&self) {
+    fn kill_all(&self) {
         let mut logger = self.logger.lock().unwrap();
         logger.monit_log("Killing all launched tasks".to_string());
         for (task_name, process_group) in self.tasks.lock().unwrap().iter_mut() {
