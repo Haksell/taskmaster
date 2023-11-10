@@ -76,6 +76,15 @@ impl Monitor {
         }
     }
 
+    fn clear_logs(&mut self, task_name: &str) -> String {
+        let tasks = self.tasks.lock().unwrap();
+        let mut logger = self.logger.lock().unwrap();
+        logger.monit_log(match tasks.get(task_name) {
+            None => format!("Failed to clear the logs of {task_name}: task does not exist"),
+            Some(task_group) => task_group[0].clear_logs(task_name),
+        })
+    }
+
     fn get_task_status(&mut self, task_name: Option<String>) -> String {
         let tasks = self.tasks.lock().unwrap();
         let mut logger = self.logger.lock().unwrap();
@@ -510,15 +519,6 @@ impl Monitor {
             drop(tasks);
             thread::sleep(Duration::from_millis(50));
         });
-    }
-
-    fn clear_logs(&mut self, task_name: &str) -> String {
-        let tasks = self.tasks.lock().unwrap();
-        let mut logger = self.logger.lock().unwrap();
-        logger.monit_log(match tasks.get(task_name) {
-            None => format!("Failed to clear the logs of {task_name}: task does not exist"),
-            Some(task_group) => task_group[0].clear_logs(task_name),
-        })
     }
 
     pub fn handle_action(&mut self, action: Action) -> Respond {
