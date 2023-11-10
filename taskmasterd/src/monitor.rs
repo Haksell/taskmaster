@@ -502,18 +502,10 @@ impl Monitor {
         logger: &Arc<Mutex<Logger>>,
         tasks: &Arc<Mutex<BTreeMap<String, Vec<Task>>>>,
     ) {
-        {
-            let mut logger = logger.lock().unwrap();
-            logger.sth_log(format!("===================================="));
-        }
         for (_, task_group) in tasks.lock().unwrap().iter() {
             let max_size = task_group[0].configuration.logfile_maxbytes;
             Self::control_log_file_limit(&logger, &task_group[0].configuration.stdout, max_size);
             Self::control_log_file_limit(&logger, &task_group[0].configuration.stderr, max_size);
-        }
-        {
-            let mut logger = logger.lock().unwrap();
-            logger.sth_log(format!("===================================="));
         }
     }
 
