@@ -2,7 +2,7 @@ SOCK_FILE := /tmp/taskmaster.sock
 PID_FILE := /tmp/taskmasterd.pid
 LOG_FILE := /tmp/taskmasterd.log
 
-GARBAGE := *VBox*.log
+GARBAGE := *VBox*.log taskmasterctl/__pycache__
 
 RESET := \033[0m
 RED := \033[1m\033[31m
@@ -47,6 +47,5 @@ clean: stop
 	@rm -rf $(GARBAGE)
 	@rm -rf $(SOCK_FILE)
 	@rm -rf $(LOG_FILE)
-	@rm -rf $(taskmasterctl/__pycache__)
-	$(call rm,target)
+	$(call rm,taskmasterd/target)
 	@rm -rf /tmp/taskmaster/*
